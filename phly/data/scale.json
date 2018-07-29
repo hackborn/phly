@@ -29,7 +29,7 @@
 		"save": {
 			"node": "phly/img/save",
 			"cfg": {
-				"abs": {"x": 100, "y": 100}
+				"file": "${srcdir}${srcbase}-out${srcext}"
 			}
 		}
 	}
