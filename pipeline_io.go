@@ -26,7 +26,7 @@ func ReadPipeline(r io.Reader) (Pipeline, error) {
 		return nil, err
 	}
 	if len(cfg.Nodes) < 1 {
-		return nil, badRequestErr
+		return nil, BadRequestErr
 	}
 	p := &pipeline{}
 	pins := make(map[string][]pincfg)

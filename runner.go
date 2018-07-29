@@ -8,9 +8,11 @@ import (
 type runner struct {
 }
 
+// run is the basic node-running algorithm. It loops over the
+// current nodes, running each one, then distributing the outputs.
 func (r *runner) run(args RunArgs, pipe *pipeline, nodes []*container) (Pins, error) {
 	if len(nodes) < 1 {
-		return nil, badRequestErr
+		return nil, BadRequestErr
 	}
 
 	stack := newRunnerStack(pipe, nodes)
@@ -44,8 +46,8 @@ func (r *runner) run(args RunArgs, pipe *pipeline, nodes []*container) (Pins, er
 // --------------------------------
 // RUNNER-CONTAINER
 
-// runnerContainer wraps a container with behaviour tracking
-// the inputs.
+// runnerContainer wraps a piplein container with behaviour
+// for tracking and storing the inputs.
 type runnerContainer struct {
 	c      *container
 	inputs []runnerConnection
@@ -148,6 +150,7 @@ func (r *runnerStack) add(c *container) *runnerContainer {
 	return ans
 }
 
+// popNext() answer the next node that's ready to run.
 func (r *runnerStack) popNext() (*runnerContainer, error) {
 	if len(r.nodes) < 1 {
 		return nil, nil

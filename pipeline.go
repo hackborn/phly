@@ -60,6 +60,7 @@ func (p *pipeline) sources() ([]*container, error) {
 // --------------------------------
 // CONTAINER
 
+// container decorates a node with the input and output connections.
 type container struct {
 	node    Node
 	inputs  []connection
@@ -68,7 +69,7 @@ type container struct {
 
 func (c *container) connect(srcpin string, dstnode *container, dstpin string) error {
 	if dstnode == nil || dstnode.node == nil {
-		return badRequestErr
+		return BadRequestErr
 	}
 	c.outputs = append(c.outputs, connection{srcpin, dstnode, dstpin})
 	dstnode.inputs = append(dstnode.inputs, connection{dstpin, c, srcpin})

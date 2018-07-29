@@ -1,16 +1,33 @@
 {
 	"nodes": {
+		"string": {
+			"node": "phly/string",
+			"cfg": {
+				"value":  "./dog.jpg",
+				"cla": "file",
+				"env": "PHLY_STRING"
+			},
+			"pins": {
+				"0": "load:file"
+			}
+		},
 		"load": {
 			"node": "phly/img/load",
-			"cfg": {
-				"file": "./dog.jpg"
-			},
 			"pins": {
 				"0": "scale:0"
 			}
 		},
 		"scale": {
 			"node": "phly/img/scale",
+			"cfg": {
+				"abs": {"x": 100, "y": 100}
+			},
+			"pins": {
+				"0": "save:0"
+			}
+		},
+		"save": {
+			"node": "phly/img/save",
 			"cfg": {
 				"abs": {"x": 100, "y": 100}
 			}

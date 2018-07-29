@@ -8,12 +8,8 @@ import (
 
 func main() {
 	doc := &phly.Doc{}
-	doc.Header.SetInt("boop2", 45)
-	doc.Header.SetString("boop", "bop")
-	i, ok := doc.Header.GetInt("boop2")
-	fmt.Println("int", i, ok)
-	str, ok := doc.Header.GetString("boop")
-	fmt.Println("string", str, ok)
+	doc.SetInt("boop2", 45)
+	doc.SetString("boop", "bop")
 
 	_, err := phly.RunPipeline()
 	if err != nil {

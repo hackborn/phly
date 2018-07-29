@@ -7,9 +7,23 @@ import (
 // --------------------------------
 // DOC
 
+// Doc describes a single abstract document. It includes
+// a user-defined header, an optional content type, and optional pages.
 type Doc struct {
 	Header
-	Pages []*Page
+	MimeType string
+	Pages    []*Page
+}
+
+func (d *Doc) NewPage(name string) *Page {
+	page := &Page{Name: name}
+	d.Pages = append(d.Pages, page)
+	return page
+}
+
+func (d *Doc) AddPage(page *Page) *Page {
+	d.Pages = append(d.Pages, page)
+	return page
 }
 
 func (d *Doc) FindPage(name string) *Page {
@@ -44,6 +58,11 @@ type Page struct {
 	Header
 	Name  string
 	Items []interface{}
+}
+
+func (p *Page) AddItem(v interface{}) *Page {
+	p.Items = append(p.Items, v)
+	return p
 }
 
 // --------------------------------
