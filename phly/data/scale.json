@@ -1,0 +1,19 @@
+{
+	"nodes": {
+		"load": {
+			"node": "phly/img/load",
+			"cfg": {
+				"file": "./dog.jpg"
+			},
+			"pins": {
+				"0": "scale:0"
+			}
+		},
+		"scale": {
+			"node": "phly/img/scale",
+			"cfg": {
+				"abs": {"x": 100, "y": 100}
+			}
+		}
+	}
+}
