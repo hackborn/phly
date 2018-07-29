@@ -20,7 +20,8 @@
 		"scale": {
 			"node": "phly/img/scale",
 			"cfg": {
-				"abs": {"x": 100, "y": 100}
+				"width": "(${w}*0.5) + 40",
+				"height": "(${h}*0.25) + 10"
 			},
 			"pins": {
 				"0": "save:0"
