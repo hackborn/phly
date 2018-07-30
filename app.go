@@ -36,6 +36,9 @@ func readCla(args []string) string {
 		case "nodes":
 			describeNodes()
 			filename = ""
+		case "markdown":
+			markdownNodes()
+			filename = ""
 		}
 	}
 	return filename
@@ -45,5 +48,12 @@ func describeNodes() {
 	for _, v := range reg.factories {
 		descr := v.Describe()
 		fmt.Println(descr.ClaString())
+	}
+}
+
+func markdownNodes() {
+	for _, v := range reg.factories {
+		descr := v.Describe()
+		fmt.Println(descr.MarkdownString())
 	}
 }

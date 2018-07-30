@@ -5,6 +5,10 @@ import (
 	"os"
 )
 
+const (
+	string_txtoutput = "0"
+)
+
 var (
 	stringtype = mime.TypeByExtension(".txt")
 )
@@ -17,7 +21,9 @@ type stringnode struct {
 }
 
 func (n *stringnode) Describe() NodeDescr {
-	return NodeDescr{Id: "phly/string", Name: "String"}
+	descr := NodeDescr{Id: "phly/string", Name: "String"}
+	descr.OutputPins = append(descr.OutputPins, PinDescr{Name: string_txtoutput, Purpose: "The single string output."})
+	return descr
 }
 
 func (n *stringnode) Run(args RunArgs, input, output Pins) error {
@@ -29,7 +35,7 @@ func (n *stringnode) Run(args RunArgs, input, output Pins) error {
 
 	doc := &Doc{MimeType: stringtype}
 	doc.NewPage("").AddItem(value)
-	output.Add("0", doc)
+	output.Add(string_txtoutput, doc)
 	return nil
 }
 
