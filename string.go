@@ -16,6 +16,10 @@ type stringnode struct {
 	Env   string `json:"env,omitempty"`
 }
 
+func (n *stringnode) Describe() NodeDescr {
+	return NodeDescr{Id: "phly/string", Name: "String"}
+}
+
 func (n *stringnode) Run(args RunArgs, input, output Pins) error {
 	// Order of precedence: default, environment variable, command line arg.
 	value := n.Value

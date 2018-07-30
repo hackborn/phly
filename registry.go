@@ -5,8 +5,8 @@ import (
 	"errors"
 )
 
-func Register(name string, fac NodeFactory) error {
-	return reg.register(name, fac)
+func Register(fac NodeFactory) error {
+	return reg.register(fac)
 }
 
 var (
@@ -22,8 +22,12 @@ func newRegistry() registry {
 	return registry{factories}
 }
 
-func (r *registry) register(name string, fac NodeFactory) error {
-	r.factories[name] = fac
+func (r *registry) register(fac NodeFactory) error {
+	id := fac.Describe().Id
+	if id == "" {
+		return BadRequestErr
+	}
+	r.factories[id] = fac
 	return nil
 }
 

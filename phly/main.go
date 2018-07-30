@@ -7,11 +7,7 @@ import (
 )
 
 func main() {
-	doc := &phly.Doc{}
-	doc.SetInt("boop2", 45)
-	doc.SetString("boop", "bop")
-
-	_, err := phly.RunPipeline()
+	_, err := phly.RunApp()
 	if err != nil {
 		fmt.Println(err)
 	}
