@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/micro-go/parse"
 	"os"
+	"sort"
 )
 
 func RunApp() (PipelineResult, error) {
@@ -45,15 +46,39 @@ func readCla(args []string) string {
 }
 
 func describeNodes() {
-	for _, v := range reg.factories {
+	for _, v := range sortedNodes() {
 		descr := v.Describe()
 		fmt.Println(descr.ClaString())
 	}
 }
 
 func markdownNodes() {
-	for _, v := range reg.factories {
+	for _, v := range sortedNodes() {
 		descr := v.Describe()
 		fmt.Println(descr.MarkdownString())
 	}
+}
+
+// --------------------------------
+// SORT
+
+func sortedNodes() []NodeFactory {
+	var nodes []NodeFactory
+	for _, v := range reg.factories {
+		nodes = append(nodes, v)
+	}
+	sort.Sort(SortNodeFactory(nodes))
+	return nodes
+}
+
+type SortNodeFactory []NodeFactory
+
+func (s SortNodeFactory) Len() int {
+	return len(s)
+}
+func (s SortNodeFactory) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s SortNodeFactory) Less(i, j int) bool {
+	return s[i].Describe().Id < s[j].Describe().Id
 }
