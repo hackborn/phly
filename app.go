@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/micro-go/parse"
 	"os"
+	"path/filepath"
 	"sort"
 )
 
@@ -22,7 +23,7 @@ func runPipeline(filename string) (PipelineResult, error) {
 	if err != nil {
 		return PipelineResult{}, err
 	}
-	args := RunArgs{}
+	args := RunArgs{Cla: os.Args, WorkingDir: workingDir(filename)}
 	return p.Run(args)
 }
 
@@ -57,6 +58,14 @@ func markdownNodes() {
 		descr := v.Describe()
 		fmt.Println(descr.MarkdownString())
 	}
+}
+
+func workingDir(path string) string {
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return ""
+	}
+	return filepath.Dir(path)
 }
 
 // --------------------------------

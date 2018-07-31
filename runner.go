@@ -46,7 +46,7 @@ func (r *runner) run(args RunArgs, pipe *pipeline, nodes []*container) (Pins, er
 // --------------------------------
 // RUNNER-CONTAINER
 
-// runnerContainer wraps a piplein container with behaviour
+// runnerContainer wraps a pipeline container with behaviour
 // for tracking and storing the inputs.
 type runnerContainer struct {
 	c      *container

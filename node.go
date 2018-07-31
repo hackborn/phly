@@ -1,6 +1,8 @@
 package phly
 
-import ()
+import (
+	"path/filepath"
+)
 
 // --------------------------------
 // NODE
@@ -26,5 +28,21 @@ type NodeFactory interface {
 
 // RunArgs provides arguments to the node during the run.
 type RunArgs struct {
-	Fields map[string]interface{}
+	Cla        []string // Command line arguments
+	WorkingDir string   // All relative file paths will use this as the root.
+	Fields     map[string]interface{}
+}
+
+// Filename() answers an absolute filename for the supplied filename.
+// Absolute filenames are returned as-is. Relative filenames are
+// made relative to the cfg that generated the pipeline.
+func (r *RunArgs) Filename(rel string) string {
+	if filepath.IsAbs(rel) {
+		return rel
+	}
+	abs, err := filepath.Abs(filepath.Join(r.WorkingDir, rel))
+	if err != nil {
+		return rel
+	}
+	return abs
 }
