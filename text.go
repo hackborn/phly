@@ -29,6 +29,10 @@ func (n *text) Describe() NodeDescr {
 	return descr
 }
 
+func (n *text) Instantiate(cfg interface{}) (Node, error) {
+	return &text{}, nil
+}
+
 func (n *text) Run(args RunArgs, input, output Pins) error {
 	// Order of precedence: default, environment variable, command line arg.
 	value := n.Value
@@ -37,13 +41,13 @@ func (n *text) Run(args RunArgs, input, output Pins) error {
 			value = v
 		}
 	}
+	cla := args.ClaValue(n.Cla)
+	if cla != "" {
+		value = cla
+	}
 
 	doc := &Doc{MimeType: texttype}
 	doc.NewPage("").AddItem(value)
 	output.Add(text_txtoutput, doc)
 	return nil
-}
-
-func (n *text) Instantiate(cfg interface{}) (Node, error) {
-	return &text{}, nil
 }

@@ -37,7 +37,7 @@ func (p *pipeline) add(name string, n Node) error {
 	if ok {
 		return errors.New("Node exists: " + name)
 	}
-	p.nodes[name] = &container{node: n}
+	p.nodes[name] = &container{name: name, node: n}
 	return nil
 }
 
@@ -62,6 +62,7 @@ func (p *pipeline) sources() ([]*container, error) {
 
 // container decorates a node with the input and output connections.
 type container struct {
+	name    string
 	node    Node
 	inputs  []connection
 	outputs []connection

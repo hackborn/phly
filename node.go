@@ -31,6 +31,27 @@ type RunArgs struct {
 	Cla        []string // Command line arguments
 	WorkingDir string   // All relative file paths will use this as the root.
 	Fields     map[string]interface{}
+	nodename   string // The name of the node currently using this run.
+}
+
+// ClaValue() answers the CLA value for the given name.
+func (r *RunArgs) ClaValue(name string) string {
+	if name == "" {
+		return ""
+	}
+	// Prepend the current node name.
+	if r.nodename != "" {
+		name = r.nodename + "." + name
+	}
+	for i, v := range r.Cla {
+		if name == v {
+			if i+1 < len(r.Cla) {
+				return r.Cla[i+1]
+			}
+			return ""
+		}
+	}
+	return ""
 }
 
 // Filename() answers an absolute filename for the supplied filename.

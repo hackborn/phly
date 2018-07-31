@@ -5,7 +5,7 @@
 			"cfg": {
 				"value":  "./dog.jpg",
 				"env": "PHLY_TEXT",
-				"cla": "file"
+				"cla": "name"
 			},
 			"pins": {
 				"0": "load:file"

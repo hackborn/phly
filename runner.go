@@ -59,6 +59,7 @@ func (c *runnerContainer) isReady() bool {
 
 func (c *runnerContainer) run(args RunArgs, output Pins) error {
 	fmt.Println("run", reflect.TypeOf(c.c.node))
+	args.nodename = c.c.name
 	return c.c.node.Run(args, c.makeInput(), output)
 }
 
