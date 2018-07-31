@@ -22,8 +22,8 @@ Examples (compiled for Windows):
 * `phly.exe markdown`. Generate markdown for all installed nodes.
 
 ## Nodes ##
-* **String** (phly/string). Acquire text from the cfg values. If a cla is available use that. If no cla, use the env. If no env, use the value.
+* **Text** (phly/text). Acquire text from the cfg values. If a cla is available use that. If no cla, use the env. If no env, use the value.
     * cfg **value**. A value directly entered into the cfg file. Use this if no cla or env are present.
     * cfg **env**. A value from the environment variables. Use this if no cla is available.
     * cfg **cla**. A value from the command line arguments.
-    * output **0**. The single string output.
+    * output **0**. The text output.

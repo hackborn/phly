@@ -1,10 +1,10 @@
 {
 	"nodes": {
 		"file": {
-			"node": "phly/string",
+			"node": "phly/text",
 			"cfg": {
 				"value":  "./dog.jpg",
-				"env": "PHLY_STRING",
+				"env": "PHLY_TEXT",
 				"cla": "file"
 			},
 			"pins": {

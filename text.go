@@ -6,30 +6,30 @@ import (
 )
 
 const (
-	string_txtoutput = "0"
+	text_txtoutput = "0"
 )
 
 var (
-	stringtype = mime.TypeByExtension(".txt")
+	texttype = mime.TypeByExtension(".txt")
 )
 
-// stringnode gathers a string to send out the pin.
-type stringnode struct {
+// text gathers a string to send out the pin.
+type text struct {
 	Value string `json:"value,omitempty"`
 	Cla   string `json:"cla,omitempty"`
 	Env   string `json:"env,omitempty"`
 }
 
-func (n *stringnode) Describe() NodeDescr {
-	descr := NodeDescr{Id: "phly/string", Name: "String", Purpose: "Acquire text from the cfg values. If a cla is available use that. If no cla, use the env. If no env, use the value."}
+func (n *text) Describe() NodeDescr {
+	descr := NodeDescr{Id: "phly/text", Name: "Text", Purpose: "Acquire text from the cfg values. If a cla is available use that. If no cla, use the env. If no env, use the value."}
 	descr.Cfgs = append(descr.Cfgs, CfgDescr{Name: "value", Purpose: "A value directly entered into the cfg file. Use this if no cla or env are present."})
 	descr.Cfgs = append(descr.Cfgs, CfgDescr{Name: "env", Purpose: "A value from the environment variables. Use this if no cla is available."})
 	descr.Cfgs = append(descr.Cfgs, CfgDescr{Name: "cla", Purpose: "A value from the command line arguments."})
-	descr.OutputPins = append(descr.OutputPins, PinDescr{Name: string_txtoutput, Purpose: "The single string output."})
+	descr.OutputPins = append(descr.OutputPins, PinDescr{Name: text_txtoutput, Purpose: "The text output."})
 	return descr
 }
 
-func (n *stringnode) Run(args RunArgs, input, output Pins) error {
+func (n *text) Run(args RunArgs, input, output Pins) error {
 	// Order of precedence: default, environment variable, command line arg.
 	value := n.Value
 	if n.Env != "" {
@@ -38,12 +38,12 @@ func (n *stringnode) Run(args RunArgs, input, output Pins) error {
 		}
 	}
 
-	doc := &Doc{MimeType: stringtype}
+	doc := &Doc{MimeType: texttype}
 	doc.NewPage("").AddItem(value)
-	output.Add(string_txtoutput, doc)
+	output.Add(text_txtoutput, doc)
 	return nil
 }
 
-func (n *stringnode) Instantiate(cfg interface{}) (Node, error) {
-	return &stringnode{}, nil
+func (n *text) Instantiate(cfg interface{}) (Node, error) {
+	return &text{}, nil
 }
