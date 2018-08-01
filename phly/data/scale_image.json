@@ -3,18 +3,18 @@
 		"file": {
 			"node": "phly/text",
 			"cfg": {
-				"value":  "./dog.jpg",
+				"value": "./dog.jpg",
 				"env": "PHLY_TEXT",
 				"cla": "name"
 			},
 			"pins": {
-				"0": "load:file"
+				"out": "load:file"
 			}
 		},
 		"load": {
 			"node": "phly/img/load",
 			"pins": {
-				"0": "scale:0"
+				"out": "scale:in"
 			}
 		},
 		"scale": {
@@ -24,7 +24,7 @@
 				"height": "(${h}*0.25) + 10"
 			},
 			"pins": {
-				"0": "save:0"
+				"out": "save:in"
 			}
 		},
 		"save": {

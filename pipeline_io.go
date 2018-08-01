@@ -65,6 +65,8 @@ func ReadPipeline(r io.Reader) (Pipeline, error) {
 			}
 		}
 	}
+	// Validate
+	err = p.validate()
 	return p, err
 }
 

@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	text_txtoutput = "0"
+	text_txtoutput = "out"
 )
 
 var (

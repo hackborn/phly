@@ -41,6 +41,43 @@ func (p *pipeline) add(name string, n Node) error {
 	return nil
 }
 
+// validate() verifies that the graph is valid.
+func (p *pipeline) validate() error {
+	descriptions := make(map[string]NodeDescr)
+	for _, n := range p.nodes {
+		descriptions[n.name] = n.node.Describe()
+	}
+	for _, n := range p.nodes {
+		for _, con := range n.inputs {
+			if con.dstNode == nil || con.dstNode.node == nil {
+				return errors.New("Node " + n.name + " has no destination for input pin " + con.srcPin)
+			}
+			d, ok := descriptions[con.dstNode.name]
+			if !ok {
+				return errors.New("Node " + n.name + " has no description for input pin " + con.srcPin + " to " + con.dstNode.name)
+			}
+			pin := d.FindOutput(con.dstPin)
+			if pin == nil {
+				return errors.New("Node " + n.name + " has invalid input " + con.srcPin + " to " + con.dstNode.name + ":" + con.dstPin)
+			}
+		}
+		for _, con := range n.outputs {
+			if con.dstNode == nil || con.dstNode.node == nil {
+				return errors.New("Node " + n.name + " has no destination for output pin " + con.srcPin)
+			}
+			d, ok := descriptions[con.dstNode.name]
+			if !ok {
+				return errors.New("Node " + n.name + " has no description for output pin " + con.srcPin + " to " + con.dstNode.name)
+			}
+			pin := d.FindInput(con.dstPin)
+			if pin == nil {
+				return errors.New("Node " + n.name + " has invalid output " + con.srcPin + " to " + con.dstNode.name + ":" + con.dstPin)
+			}
+		}
+	}
+	return nil
+}
+
 func (p *pipeline) sources() ([]*container, error) {
 	if p.nodes == nil {
 		return nil, missingSourcesErr

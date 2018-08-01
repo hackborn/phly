@@ -15,6 +15,23 @@ type NodeDescr struct {
 	OutputPins []PinDescr
 }
 
+func (n *NodeDescr) FindInput(name string) *PinDescr {
+	return n.findPin(name, n.InputPins)
+}
+
+func (n *NodeDescr) FindOutput(name string) *PinDescr {
+	return n.findPin(name, n.OutputPins)
+}
+
+func (n *NodeDescr) findPin(name string, pins []PinDescr) *PinDescr {
+	for _, pin := range pins {
+		if pin.Name == name {
+			return &pin
+		}
+	}
+	return nil
+}
+
 func (n *NodeDescr) ClaString() string {
 	str := n.Name + " (" + n.Id + ")."
 	if n.Purpose != "" {
