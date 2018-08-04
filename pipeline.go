@@ -34,7 +34,7 @@ func (p *pipeline) Instantiate(args InstantiateArgs, cfg interface{}) (Node, err
 		ans.file = file
 		r := args.Env.FindReader(file)
 		if r == nil {
-			return nil, errors.New("Can't find " + file)
+			return nil, errors.New("Pipeline can't find " + file)
 		}
 		err := readPipeline(r, ans)
 		if err != nil {
@@ -44,7 +44,6 @@ func (p *pipeline) Instantiate(args InstantiateArgs, cfg interface{}) (Node, err
 	return ans, nil
 }
 
-//func (p *pipeline) Run(args RunArgs) (PipelineResult, error) {
 func (p *pipeline) Run(args RunArgs, input, output Pins) error {
 	// Make my input and sources
 	inputs, err := p.gatherInputs(input)

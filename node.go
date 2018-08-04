@@ -36,13 +36,14 @@ type InstantiateArgs struct {
 
 // RunArgs provides arguments to the node during the run.
 type RunArgs struct {
+	Env        Environment
 	Cla        []string // Command line arguments
 	WorkingDir string   // All relative file paths will use this as the root.
 	Fields     map[string]interface{}
 	nodename   string // The name of the node currently using this run.
 }
 
-// ClaValue() answers the CLA value for the given name.
+// ClaValue() answers the command line argument value for the given name.
 func (r *RunArgs) ClaValue(name string) string {
 	if name == "" {
 		return ""

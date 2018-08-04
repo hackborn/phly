@@ -23,7 +23,7 @@ func runPipeline(filename string) (Pins, error) {
 	if err != nil {
 		return nil, err
 	}
-	args := RunArgs{Cla: os.Args, WorkingDir: workingDir(filename)}
+	args := RunArgs{Env: env, Cla: os.Args, WorkingDir: workingDir(filename)}
 
 	input := &pins{}
 	output := &pins{}
@@ -39,6 +39,14 @@ func readCla(args []string) string {
 	token := parse.NewStringToken(args...)
 	for a, err := token.Next(); err == nil; a, err = token.Next() {
 		switch a {
+		case "file":
+			filename, err = token.Next()
+			if err != nil {
+				return ""
+			}
+		case "vars":
+			describeVars()
+			filename = ""
 		case "nodes":
 			describeNodes()
 			filename = ""
@@ -48,6 +56,12 @@ func readCla(args []string) string {
 		}
 	}
 	return filename
+}
+
+func describeVars() {
+	for _, v := range vardescrs {
+		fmt.Println(v.name, "-", v.descr)
+	}
 }
 
 func describeNodes() {

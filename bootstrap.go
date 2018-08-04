@@ -3,6 +3,8 @@ package phly
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 )
 
 var (
@@ -12,6 +14,7 @@ var (
 func init() {
 	// Prepare environment
 	env.phlibPaths = append(env.phlibPaths, factoryPhlibPath())
+	RegisterVar("cpus", "Number of CPUs", strconv.Itoa(runtime.NumCPU()))
 
 	// Register factory nodes
 	Register(&batch{})

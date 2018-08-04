@@ -3,7 +3,7 @@
 		"file": {
 			"node": "phly/text",
 			"cfg": {
-				"value": "./dog.jpg",
+				"value": "./phlib/media/dog.jpg",
 				"env": "PHLY_TEXT",
 				"cla": "name"
 			},
@@ -14,6 +14,7 @@
 		"batch": {
 			"node": "phly/batch",
 			"cfg": {
+				"count": "${cpus}",
 				"file": "_scaleimg.json"
 			}
 		}

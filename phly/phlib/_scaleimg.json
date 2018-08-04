@@ -17,8 +17,8 @@
 		"scale": {
 			"node": "phly/img/scale",
 			"cfg": {
-				"width": "(${w}*0.5) + 40",
-				"height": "(${h}*0.25) + 10"
+				"width": "(${srcw}*0.5) + 40",
+				"height": "(${srch}*0.25) + 10"
 			},
 			"pins": {
 				"out": "save:in"
@@ -27,7 +27,7 @@
 		"save": {
 			"node": "phly/img/save",
 			"cfg": {
-				"file": "${srcdir}${srcbase}-out${srcext}"
+				"file": "${srcdir}-out/${srcbase}${srcext}"
 			}
 		}
 	}
