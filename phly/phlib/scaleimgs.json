@@ -1,0 +1,21 @@
+{
+	"nodes": {
+		"file": {
+			"node": "phly/text",
+			"cfg": {
+				"value": "./dog.jpg",
+				"env": "PHLY_TEXT",
+				"cla": "name"
+			},
+			"pins": {
+				"out": "batch:in"
+			}
+		},
+		"batch": {
+			"node": "phly/batch",
+			"cfg": {
+				"file": "_scaleimg.json"
+			}
+		}
+	}
+}

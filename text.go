@@ -29,7 +29,7 @@ func (n *text) Describe() NodeDescr {
 	return descr
 }
 
-func (n *text) Instantiate(cfg interface{}) (Node, error) {
+func (n *text) Instantiate(args InstantiateArgs, cfg interface{}) (Node, error) {
 	return &text{}, nil
 }
 

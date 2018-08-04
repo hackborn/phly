@@ -2,31 +2,65 @@ package phly
 
 import (
 	"errors"
+	"github.com/micro-go/parse"
+	"strings"
 )
-
-type Pipeline interface {
-	Run(args RunArgs) (PipelineResult, error)
-}
-
-func NewPipeline() Pipeline {
-	return &pipeline{}
-}
 
 // --------------------------------
 // PIPELINE
 
 type pipeline struct {
-	nodes map[string]*container
+	file        string                `json:"-"`
+	nodes       map[string]*container `json:"-"`
+	inputDescr  []pipelinePinDescr    `json:"-"`
+	outputDescr []pipelinePinDescr    `json:"-"`
 }
 
-func (p *pipeline) Run(args RunArgs) (PipelineResult, error) {
-	sources, err := p.sources()
+func (p *pipeline) Describe() NodeDescr {
+	descr := NodeDescr{Id: "phly/pipeline", Name: "Pipeline", Purpose: "Run an internal pipeline."}
+	for _, pin := range p.inputDescr {
+		descr.InputPins = append(descr.InputPins, PinDescr{Name: pin.Name, Purpose: pin.Purpose})
+	}
+	for _, pin := range p.outputDescr {
+		descr.OutputPins = append(descr.OutputPins, PinDescr{Name: pin.Name, Purpose: pin.Purpose})
+	}
+	return descr
+}
+
+func (p *pipeline) Instantiate(args InstantiateArgs, cfg interface{}) (Node, error) {
+	ans := &pipeline{}
+	file, _ := parse.FindTreeString("file", cfg)
+	if file != "" {
+		ans.file = file
+		r := args.Env.FindReader(file)
+		if r == nil {
+			return nil, errors.New("Can't find " + file)
+		}
+		err := readPipeline(r, ans)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ans, nil
+}
+
+//func (p *pipeline) Run(args RunArgs) (PipelineResult, error) {
+func (p *pipeline) Run(args RunArgs, input, output Pins) error {
+	// Make my input and sources
+	inputs, err := p.gatherInputs(input)
 	if err != nil {
-		return PipelineResult{}, err
+		return err
+	}
+	sources, err := p.gatherSources(inputs)
+	if err != nil {
+		return err
 	}
 	r := &runner{}
-	_, err = r.run(args, p, sources)
-	return PipelineResult{}, err
+	outs, err := r.run(args, p, sources, inputs)
+	if outs != nil {
+		outs.Describe()
+	}
+	return err
 }
 
 func (p *pipeline) add(name string, n Node) error {
@@ -47,18 +81,22 @@ func (p *pipeline) validate() error {
 	for _, n := range p.nodes {
 		descriptions[n.name] = n.node.Describe()
 	}
+
 	for _, n := range p.nodes {
 		for _, con := range n.inputs {
 			if con.dstNode == nil || con.dstNode.node == nil {
 				return errors.New("Node " + n.name + " has no destination for input pin " + con.srcPin)
 			}
-			d, ok := descriptions[con.dstNode.name]
-			if !ok {
-				return errors.New("Node " + n.name + " has no description for input pin " + con.srcPin + " to " + con.dstNode.name)
-			}
-			pin := d.FindOutput(con.dstPin)
-			if pin == nil {
-				return errors.New("Node " + n.name + " has invalid input " + con.srcPin + " to " + con.dstNode.name + ":" + con.dstPin)
+			// Input that points to the pipeline will be empty, so don't try to validate.
+			if con.dstNode.name != "" {
+				d, ok := descriptions[con.dstNode.name]
+				if !ok {
+					return errors.New("Node " + n.name + " has no description for input pin " + con.srcPin + " to " + con.dstNode.name)
+				}
+				pin := d.FindOutput(con.dstPin)
+				if pin == nil {
+					return errors.New("Node " + n.name + " has invalid input " + con.srcPin + " to " + con.dstNode.name + ":" + con.dstPin)
+				}
 			}
 		}
 		for _, con := range n.outputs {
@@ -78,7 +116,27 @@ func (p *pipeline) validate() error {
 	return nil
 }
 
-func (p *pipeline) sources() ([]*container, error) {
+func (p *pipeline) gatherInputs(src Pins) (runnerInput, error) {
+	ri := runnerInput{}
+	if src == nil || src.Count() < 1 {
+		return ri, nil
+	}
+	// Each input gets turned into an entry pointing to one of my nodes.
+	for _, descr := range p.inputDescr {
+		docs := src.Get(descr.Name)
+		if docs != nil {
+			for _, conn := range descr.connections {
+				ri.add(conn.DstNode, conn.DstPin, docs)
+			}
+		}
+
+	}
+	return ri, nil
+}
+
+// gatherSources() returns all source nodes. A source node is one that either
+// has no input, or has input data for all its inputs.
+func (p *pipeline) gatherSources(input runnerInput) ([]*container, error) {
 	if p.nodes == nil {
 		return nil, missingSourcesErr
 	}
@@ -86,6 +144,17 @@ func (p *pipeline) sources() ([]*container, error) {
 	for _, c := range p.nodes {
 		if len(c.inputs) < 1 {
 			sources = append(sources, c)
+		} else if len(input.nodeInputs) > 0 {
+			ready := true
+			for _, conn := range c.inputs {
+				if !input.hasPin(c.name, conn.srcPin) {
+					ready = false
+					break
+				}
+			}
+			if ready {
+				sources = append(sources, c)
+			}
 		}
 	}
 	if len(sources) < 1 {
@@ -118,8 +187,10 @@ func (c *container) connect(srcpin string, dstnode *container, dstpin string) er
 // CONNECTION
 
 // connection is a single connection from the output of one pin
-// to the input of another. It is to describe both input and output
-// connections from each node, but src and dst reverses on input.
+// to the input of another. It is used to describe both input and output
+// connections from each node, but src and dst reverses on input. That
+// is, as an output connection, the srcPin is the pin sending data.
+// As an input connection, the srcPin is the pin receiving data.
 type connection struct {
 	srcPin  string
 	dstNode *container
@@ -127,7 +198,22 @@ type connection struct {
 }
 
 // --------------------------------
-// PIPELINE-RESULT
+// PIPELINE-PIN-DESCR
 
-type PipelineResult struct {
+type pipelinePinDescr struct {
+	PinDescr
+	connections []connectionDescr
+}
+
+type connectionDescr struct {
+	DstNode string
+	DstPin  string
+}
+
+func newConnectionDescr(comp string) connectionDescr {
+	v := strings.Split(comp, ":")
+	if len(v) != 2 {
+		return connectionDescr{}
+	}
+	return connectionDescr{v[0], v[1]}
 }

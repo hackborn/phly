@@ -10,12 +10,12 @@ type runner struct {
 
 // run is the basic node-running algorithm. It loops over the
 // current nodes, running each one, then distributing the outputs.
-func (r *runner) run(args RunArgs, pipe *pipeline, nodes []*container) (Pins, error) {
+func (r *runner) run(args RunArgs, pipe *pipeline, nodes []*container, input runnerInput) (Pins, error) {
 	if len(nodes) < 1 {
 		return nil, BadRequestErr
 	}
 
-	stack := newRunnerStack(pipe, nodes)
+	stack := newRunnerStack(pipe, nodes, input)
 	current, err := stack.popNext()
 	if err != nil {
 		return nil, err
@@ -41,6 +41,43 @@ func (r *runner) run(args RunArgs, pipe *pipeline, nodes []*container) (Pins, er
 		}
 	}
 	return nil, nil
+}
+
+// --------------------------------
+// RUNNER-INPUT
+
+// runnerContainer wraps a pipeline container with behaviour
+// for tracking and storing the inputs.
+type runnerInput struct {
+	nodeInputs map[string]*pins
+}
+
+func (r *runnerInput) add(dstnode, dstpin string, docs []*Doc) {
+	if docs == nil {
+		return
+	}
+	if r.nodeInputs == nil {
+		r.nodeInputs = make(map[string]*pins)
+	}
+	in, ok := r.nodeInputs[dstnode]
+	if !ok {
+		in = &pins{}
+		r.nodeInputs[dstnode] = in
+	}
+	for _, doc := range docs {
+		// XXX We should be smart about copying when necessary
+		in.Add(dstpin, doc)
+	}
+}
+
+func (r *runnerInput) hasPin(node, pin string) bool {
+	if r.nodeInputs == nil {
+		return false
+	}
+	if pins, ok := r.nodeInputs[node]; ok && pins != nil {
+		return pins.Get(pin) != nil
+	}
+	return false
 }
 
 // --------------------------------
@@ -130,10 +167,19 @@ type runnerStack struct {
 	nodes []*runnerContainer
 }
 
-func newRunnerStack(pipe *pipeline, nodes []*container) *runnerStack {
+func newRunnerStack(pipe *pipeline, nodes []*container, input runnerInput) *runnerStack {
 	r := &runnerStack{pipe: pipe}
 	for _, n := range nodes {
-		r.add(n)
+		rc := r.add(n)
+		if len(input.nodeInputs) > 0 {
+			for k, v := range input.nodeInputs {
+				if k == rc.c.name && v != nil {
+					for pin, docs := range v.all {
+						rc.addInput(pin, docs)
+					}
+				}
+			}
+		}
 	}
 	return r
 }

@@ -36,7 +36,8 @@ func (r *registry) instantiate(name string, cfg interface{}) (Node, error) {
 	if !ok {
 		return nil, errors.New("Missing node: " + name)
 	}
-	n, err := fac.Instantiate(cfg)
+	args := InstantiateArgs{Env: env}
+	n, err := fac.Instantiate(args, cfg)
 	if err != nil {
 		return nil, err
 	}

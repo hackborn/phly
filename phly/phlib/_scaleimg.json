@@ -1,16 +1,13 @@
 {
-	"nodes": {
-		"file": {
-			"node": "phly/text",
-			"cfg": {
-				"value": "./dog.jpg",
-				"env": "PHLY_TEXT",
-				"cla": "name"
-			},
-			"pins": {
-				"out": "load:file"
-			}
+	"pins": {
+		"ins": {
+			"in": [ "load:file" ]
 		},
+		"outs": {
+			"out": [ "save:out" ]
+		}
+	},
+	"nodes": {
 		"load": {
 			"node": "phly/img/load",
 			"pins": {

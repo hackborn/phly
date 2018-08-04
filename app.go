@@ -10,25 +10,29 @@ import (
 	"sort"
 )
 
-func RunApp() (PipelineResult, error) {
+func RunApp() (Pins, error) {
 	filename := readCla(os.Args)
 	if filename == "" {
-		return PipelineResult{}, nil
+		return nil, nil
 	}
 	return runPipeline(filename)
 }
 
-func runPipeline(filename string) (PipelineResult, error) {
+func runPipeline(filename string) (Pins, error) {
 	p, err := LoadPipeline(filename)
 	if err != nil {
-		return PipelineResult{}, err
+		return nil, err
 	}
 	args := RunArgs{Cla: os.Args, WorkingDir: workingDir(filename)}
-	return p.Run(args)
+
+	input := &pins{}
+	output := &pins{}
+	err = p.Run(args, input, output)
+	return output, err
 }
 
 func readCla(args []string) string {
-	filename := `.\data\scale_image.json`
+	filename := `scaleimg.json`
 	if args == nil {
 		return filename
 	}

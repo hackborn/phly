@@ -20,7 +20,15 @@ type Node interface {
 // factories installed in the bootstrap.
 type NodeFactory interface {
 	Describe() NodeDescr
-	Instantiate(tree interface{}) (Node, error)
+	Instantiate(args InstantiateArgs, tree interface{}) (Node, error)
+}
+
+// --------------------------------
+// INSTANTIATE-ARGS
+
+// InstantiateArgs provides information during the instantiation phase.
+type InstantiateArgs struct {
+	Env Environment
 }
 
 // --------------------------------

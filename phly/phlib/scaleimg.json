@@ -1,0 +1,21 @@
+{
+	"nodes": {
+		"file": {
+			"node": "phly/text",
+			"cfg": {
+				"value": "./phlib/media/dog.jpg",
+				"env": "PHLY_TEXT",
+				"cla": "name"
+			},
+			"pins": {
+				"out": "pipeline:in"
+			}
+		},
+		"pipeline": {
+			"node": "phly/pipeline",
+			"cfg": {
+				"file": "_scaleimg.json"
+			}
+		}
+	}
+}

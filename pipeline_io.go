@@ -9,7 +9,8 @@ import (
 	"strings"
 )
 
-func LoadPipeline(filename string) (Pipeline, error) {
+func LoadPipeline(name string) (Node, error) {
+	filename := env.FindFile(name)
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -18,31 +19,39 @@ func LoadPipeline(filename string) (Pipeline, error) {
 	return ReadPipeline(f)
 }
 
-func ReadPipeline(r io.Reader) (Pipeline, error) {
+func ReadPipeline(r io.Reader) (Node, error) {
+	p := &pipeline{}
+	err := readPipeline(r, p)
+	return p, err
+}
+
+func readPipeline(r io.Reader, p *pipeline) error {
 	d := json.NewDecoder(r)
 	cfg := pipelinecfg{}
 	err := d.Decode(&cfg)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	//	fmt.Println("LOADED", cfg)
 	if len(cfg.Nodes) < 1 {
-		return nil, BadRequestErr
+		return BadRequestErr
 	}
-	p := &pipeline{}
+	p.inputDescr = makePipelinePinDescrs(cfg.Pins.Ins)
+	p.outputDescr = makePipelinePinDescrs(cfg.Pins.Outs)
 	pins := make(map[string][]pincfg)
 	// Create the nodes and cache their pins
 	for k, v := range cfg.Nodes {
 		n, err := readNode(k, v)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		err = p.add(k, n)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		pc, err := readPinCfgs(v)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if pc != nil {
 			pins[k] = pc
@@ -52,29 +61,61 @@ func ReadPipeline(r io.Reader) (Pipeline, error) {
 	for k, pinlist := range pins {
 		srcn, ok := p.nodes[k]
 		if !ok || srcn == nil {
-			return nil, errors.New("Pin on missing node " + k)
+			return errors.New("Pin on missing node " + k)
 		}
 		for _, pin := range pinlist {
 			dstn, ok := p.nodes[pin.dstNode]
 			if !ok || dstn == nil {
-				return nil, errors.New("Pin on missing node " + pin.dstNode)
+				return errors.New("Pin on missing node " + pin.dstNode)
 			}
 			err = srcn.connect(pin.srcPin, dstn, pin.dstPin)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
+	// Hookup my inputs. They point to an empty container, since there's no
+	// container for the pipeline. Inputs aren't traversed so this is fine.
+	empty_container := &container{node: p}
+	for _, descr := range p.inputDescr {
+		for _, conn := range descr.connections {
+			dstn, ok := p.nodes[conn.DstNode]
+			if !ok || dstn == nil {
+				return errors.New("Pipeline input pin on missing node " + conn.DstNode)
+			}
+			dstn.inputs = append(dstn.inputs, connection{conn.DstPin, empty_container, descr.Name})
+		}
+	}
 	// Validate
-	err = p.validate()
-	return p, err
+	return p.validate()
 }
 
 // --------------------------------
 // PIPELINE-CFG
 
 type pipelinecfg struct {
+	Pins  pipelinepinio          `json:"pins,omitempty"`
 	Nodes map[string]interface{} `json:"nodes,omitempty"`
+}
+
+// --------------------------------
+// PIPELINE-PIN-IO
+type pipelinepinio struct {
+	Ins  map[string][]string `json:"ins,omitempty"`
+	Outs map[string][]string `json:"outs,omitempty"`
+}
+
+func makePipelinePinDescrs(src map[string][]string) []pipelinePinDescr {
+	var dst []pipelinePinDescr
+	for k, v := range src {
+		descr := pipelinePinDescr{}
+		descr.Name = k
+		for _, vv := range v {
+			descr.connections = append(descr.connections, newConnectionDescr(vv))
+		}
+		dst = append(dst, descr)
+	}
+	return dst
 }
 
 // --------------------------------
