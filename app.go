@@ -35,29 +35,30 @@ func runPipeline(filename string) (Pins, error) {
 }
 
 func readCla(args []string) (string, error) {
-	// Default. Primarily for testing. Should probably make this configurable.
-	filename := `scaleimg.json`
 	token := parse.NewStringToken(args...)
 	// Skip the app name
 	token.Next()
-	first := true
+	filename := ""
 	for a, err := token.Next(); err == nil; a, err = token.Next() {
-		// First item is the file
-		if first {
-			filename = a
-		}
-		first = false
 		switch a {
 		case "-vars":
 			describeVars()
-			filename = ""
+			return "", nil
 		case "-nodes":
 			describeNodes()
-			filename = ""
+			return "", nil
 		case "-markdown":
 			markdownNodes()
-			filename = ""
+			return "", nil
 		}
+		// First token is the file
+		if filename == "" {
+			filename = a
+		}
+	}
+	// Default. Primarily for testing. Should probably make this configurable.
+	if filename == "" {
+		filename = `scaleimg.json`
 	}
 	return filename, nil
 }
