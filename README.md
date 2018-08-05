@@ -18,8 +18,9 @@ The work so far has been on the framework. The actual application currently does
 
 Examples (compiled for Windows):
 * `phly.exe`. Run the app, which currently defaults to running the `data/scale_image.json` pipeline.
-* `phly.exe nodes`. Display all installed nodes.
-* `phly.exe markdown`. Generate markdown for all installed nodes.
+* `phly.exe -nodes`. Display all installed nodes.
+* `phly.exe -markdown`. Generate markdown for all installed nodes.
+* `phly.exe -vars`. Display all node-defined variables.
 
 ## Nodes ##
 * **Batch** (phly/batch). Perform multiple actions in parallel.
