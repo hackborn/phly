@@ -9,10 +9,10 @@ import (
 // since each package can have its own non-conflicting variables. You can supply
 // an optional value and the var wil be including when replacing vars through the
 // Environment, although only a single var with the same name can have a value.
-func RegisterVar(name, descr string, optional_value string) {
+func RegisterVar(name, descr string, optional_value interface{}) {
 	vardescrs = append(vardescrs, varDescr{name, descr})
 	vardescrs = sortedVars(vardescrs)
-	if optional_value != "" {
+	if optional_value != nil {
 		env.setVar(name, optional_value)
 	}
 }

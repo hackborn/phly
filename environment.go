@@ -13,8 +13,6 @@ import (
 
 // Environment provides access to the system environment.
 type Environment interface {
-	// Answer the system var with the given name.
-	Var(name string) string
 	// FindFile() answers the full path to the phlyp by searching paths for name.
 	FindFile(name string) string
 	// FindReader() answers a reader for the given name.
@@ -27,19 +25,9 @@ type Environment interface {
 // Environment stores the current phly environment.
 type environment struct {
 	mutex       sync.RWMutex // This needs to be thread safe for the batching.
-	vars        map[string]string
 	replaceVars []interface{}
 	phlibPaths  []string // A list of all registered library locations.
 	phlypCache  map[string][]byte
-}
-
-func (e *environment) Var(name string) string {
-	defer lock.Read(&e.mutex).Unlock()
-
-	if e.vars == nil {
-		return ""
-	}
-	return e.vars[name]
 }
 
 // FindFile() answers the full path to the phlyp by searching paths for name.
@@ -79,7 +67,6 @@ func (e *environment) FindReader(name string) io.Reader {
 
 func (e *environment) ReplaceVars(s string, pairs ...interface{}) string {
 	defer lock.Read(&e.mutex).Unlock()
-
 	if len(e.replaceVars) > 0 {
 		s = parse.ReplacePairs(s, e.replaceVars...)
 	}
@@ -89,13 +76,9 @@ func (e *environment) ReplaceVars(s string, pairs ...interface{}) string {
 	return s
 }
 
-func (e *environment) setVar(name, value string) {
+func (e *environment) setVar(name string, value interface{}) {
 	defer lock.Write(&e.mutex).Unlock()
 
-	if e.vars == nil {
-		e.vars = make(map[string]string)
-	}
-	e.vars[name] = value
 	e.replaceVars = append(e.replaceVars, "${"+name+"}")
 	e.replaceVars = append(e.replaceVars, value)
 }

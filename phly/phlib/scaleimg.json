@@ -1,4 +1,9 @@
 {
+	"args": {
+		"strings": {
+			"file": "./phlib/media/dog.jpg"
+		}
+	},
 	"nodes": {
 		"file": {
 			"node": "phly/text",
@@ -15,6 +20,9 @@
 			"node": "phly/pipeline",
 			"cfg": {
 				"file": "_scaleimg.json"
+			},
+			"ins": {
+				"in": "args:file"
 			}
 		}
 	}

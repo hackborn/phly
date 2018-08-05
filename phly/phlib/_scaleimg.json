@@ -15,8 +15,8 @@
 		"scale": {
 			"node": "phly/img/scale",
 			"cfg": {
-				"width": "(${srcw}*0.5) + 40",
-				"height": "(${srch}*0.25) + 10"
+				"width": "(${srcw}*0.5) + (${rndu}*100)",
+				"height": "(${srch}*0.25) + (${rndu}*100)"
 			},
 			"outs": {
 				"out": "save:in"
