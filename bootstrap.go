@@ -18,6 +18,7 @@ func init() {
 
 	// Register factory nodes
 	Register(&batch{})
+	Register(&files{})
 	Register(&pipeline{})
 	Register(&text{})
 }

@@ -1,11 +1,12 @@
 {
 	"nodes": {
-		"file": {
-			"node": "phly/text",
+		"files": {
+			"node": "phly/files",
 			"cfg": {
-				"value": "./phlib/media/dog.jpg",
+				"value": "",
 				"env": "PHLY_TEXT",
-				"cla": "name"
+				"cla": "name",
+				"expand": true
 			},
 			"pins": {
 				"out": "batch:in"
@@ -14,6 +15,7 @@
 		"batch": {
 			"node": "phly/batch",
 			"cfg": {
+				"mode": "items",
 				"count": "${cpus}",
 				"file": "_scaleimg.json"
 			}

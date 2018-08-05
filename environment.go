@@ -2,11 +2,13 @@ package phly
 
 import (
 	"bytes"
+	"github.com/micro-go/lock"
 	"github.com/micro-go/parse"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 // Environment provides access to the system environment.
@@ -24,6 +26,7 @@ type Environment interface {
 
 // Environment stores the current phly environment.
 type environment struct {
+	mutex       sync.RWMutex // This needs to be thread safe for the batching.
 	vars        map[string]string
 	replaceVars []interface{}
 	phlibPaths  []string // A list of all registered library locations.
@@ -31,6 +34,8 @@ type environment struct {
 }
 
 func (e *environment) Var(name string) string {
+	defer lock.Read(&e.mutex).Unlock()
+
 	if e.vars == nil {
 		return ""
 	}
@@ -39,6 +44,8 @@ func (e *environment) Var(name string) string {
 
 // FindFile() answers the full path to the phlyp by searching paths for name.
 func (e *environment) FindFile(name string) string {
+	defer lock.Read(&e.mutex).Unlock()
+
 	for _, dir := range e.phlibPaths {
 		p := filepath.Join(dir, name)
 		if _, err := os.Stat(p); err == nil {
@@ -50,6 +57,8 @@ func (e *environment) FindFile(name string) string {
 
 // FindReader() answers a reader to the path. A cache is used so reuse is efficient.
 func (e *environment) FindReader(name string) io.Reader {
+	defer lock.Read(&e.mutex).Unlock()
+
 	resolved := e.FindFile(name)
 	if name == "" {
 		return nil
@@ -69,6 +78,8 @@ func (e *environment) FindReader(name string) io.Reader {
 }
 
 func (e *environment) ReplaceVars(s string, pairs ...interface{}) string {
+	defer lock.Read(&e.mutex).Unlock()
+
 	if len(e.replaceVars) > 0 {
 		s = parse.ReplacePairs(s, e.replaceVars...)
 	}
@@ -79,6 +90,8 @@ func (e *environment) ReplaceVars(s string, pairs ...interface{}) string {
 }
 
 func (e *environment) setVar(name, value string) {
+	defer lock.Write(&e.mutex).Unlock()
+
 	if e.vars == nil {
 		e.vars = make(map[string]string)
 	}

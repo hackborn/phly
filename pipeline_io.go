@@ -32,7 +32,7 @@ func readPipeline(r io.Reader, p *pipeline) error {
 	if err != nil {
 		return err
 	}
-	//	fmt.Println("LOADED", cfg)
+	// fmt.Println("LOADED", cfg)
 	if len(cfg.Nodes) < 1 {
 		return BadRequestErr
 	}

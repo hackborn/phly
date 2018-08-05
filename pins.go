@@ -4,11 +4,14 @@ import (
 	"fmt"
 )
 
+type PinsWalkFunc func(name string, docs []*Doc)
+
 // Pins describes a collection of documents attached to pins.
 type Pins interface {
 	Count() int
 	Get(name string) []*Doc
 	Add(name string, doc *Doc)
+	Walk(fn PinsWalkFunc)
 	Describe()
 }
 
@@ -34,6 +37,15 @@ func (p *pins) Add(name string, doc *Doc) {
 	slice := p.all[name]
 	slice = append(slice, doc)
 	p.all[name] = slice
+}
+
+func (p *pins) Walk(fn PinsWalkFunc) {
+	if p.all == nil {
+		return
+	}
+	for k, v := range p.all {
+		fn(k, v)
+	}
 }
 
 func (p *pins) Describe() {

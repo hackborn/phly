@@ -7,6 +7,7 @@ import (
 var (
 	BadRequestErr            = errors.New("Bad request")
 	corruptFileErr           = errors.New("Corrupt file")
+	emptyErr                 = errors.New("Empty")
 	MissingDocErr            = errors.New("There is no doc")
 	missingSourcesErr        = errors.New("There are no source nodes")
 	unknownBlockTypeErr      = errors.New("Unknown block type")

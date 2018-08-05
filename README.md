@@ -6,7 +6,7 @@ A pipeline processing framework. Phly has two main pieces:
 * The phly app, a lightweight application designed to make it easy to compile in additional nodes.
 
 ## Building ##
-* Install Go 1.8.3 or later.
+* Install Go 1.10.3 or later.
 * From the command line, enter directory `phly\phly`.
 * Type `go get` to get all dependencies.
 * Type `go build` to build the app.
@@ -22,8 +22,16 @@ Examples (compiled for Windows):
 * `phly.exe markdown`. Generate markdown for all installed nodes.
 
 ## Nodes ##
+* **Batch** (phly/batch). Perform multiple actions in parallel.
+* **Files** (phly/files). Create file lists from file names and folders. Produce a single doc with a single page.
+    * cfg **value**. A value directly entered into the cfg file. Use this if no cla or env are present.
+    * cfg **env**. A value from the environment variables. Use this if no cla is available.
+    * cfg **cla**. A value from the command line arguments.
+    * cfg **expand**. (true or false). When true, folders are expanded to the file contents.
+    * output **out**. The file list.
+* **Pipeline** (phly/pipeline). Run an internal pipeline.
 * **Text** (phly/text). Acquire text from the cfg values. If a cla is available use that. If no cla, use the env. If no env, use the value.
     * cfg **value**. A value directly entered into the cfg file. Use this if no cla or env are present.
     * cfg **env**. A value from the environment variables. Use this if no cla is available.
     * cfg **cla**. A value from the command line arguments.
-    * output **0**. The text output.
+    * output **out**. The text output.

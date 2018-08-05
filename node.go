@@ -43,6 +43,11 @@ type RunArgs struct {
 	nodename   string // The name of the node currently using this run.
 }
 
+func (r *RunArgs) copy() RunArgs {
+	fields := make(map[string]interface{})
+	return RunArgs{r.Env, r.Cla, r.WorkingDir, fields, r.nodename}
+}
+
 // ClaValue() answers the command line argument value for the given name.
 func (r *RunArgs) ClaValue(name string) string {
 	if name == "" {

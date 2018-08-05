@@ -60,6 +60,15 @@ type Page struct {
 	Items []interface{}
 }
 
+func (p *Page) Copy() *Page {
+	dst := &Page{Name: p.Name}
+	dst.Header.Values = p.Header.Values
+	for _, i := range p.Items {
+		dst.Items = append(dst.Items, i)
+	}
+	return dst
+}
+
 func (p *Page) AddItem(v interface{}) *Page {
 	p.Items = append(p.Items, v)
 	return p

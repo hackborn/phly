@@ -11,7 +11,10 @@ import (
 )
 
 func RunApp() (Pins, error) {
-	filename := readCla(os.Args)
+	filename, err := readCla(os.Args)
+	if err != nil {
+		return nil, err
+	}
 	if filename == "" {
 		return nil, nil
 	}
@@ -31,31 +34,32 @@ func runPipeline(filename string) (Pins, error) {
 	return output, err
 }
 
-func readCla(args []string) string {
+func readCla(args []string) (string, error) {
+	// Default. Primarily for testing. Should probably make this configurable.
 	filename := `scaleimg.json`
-	if args == nil {
-		return filename
-	}
 	token := parse.NewStringToken(args...)
+	// Skip the app name
+	token.Next()
+	first := true
 	for a, err := token.Next(); err == nil; a, err = token.Next() {
+		// First item is the file
+		if first {
+			filename = a
+		}
+		first = false
 		switch a {
-		case "file":
-			filename, err = token.Next()
-			if err != nil {
-				return ""
-			}
-		case "vars":
+		case "-vars":
 			describeVars()
 			filename = ""
-		case "nodes":
+		case "-nodes":
 			describeNodes()
 			filename = ""
-		case "markdown":
+		case "-markdown":
 			markdownNodes()
 			filename = ""
 		}
 	}
-	return filename
+	return filename, nil
 }
 
 func describeVars() {
