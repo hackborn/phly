@@ -1,16 +1,14 @@
 {
-	"pins": {
-		"ins": {
-			"in": [ "load:file" ]
-		},
-		"outs": {
-			"out": [ "save:out" ]
-		}
+	"ins": {
+		"in": [ "load:file" ]
+	},
+	"outs": {
+		"out": [ "save:out" ]
 	},
 	"nodes": {
 		"load": {
 			"node": "phly/img/load",
-			"pins": {
+			"outs": {
 				"out": "scale:in"
 			}
 		},
@@ -20,7 +18,7 @@
 				"width": "(${srcw}*0.5) + 40",
 				"height": "(${srch}*0.25) + 10"
 			},
-			"pins": {
+			"outs": {
 				"out": "save:in"
 			}
 		},

@@ -36,8 +36,8 @@ func readPipeline(r io.Reader, p *pipeline) error {
 	if len(cfg.Nodes) < 1 {
 		return BadRequestErr
 	}
-	p.inputDescr = makePipelinePinDescrs(cfg.Pins.Ins)
-	p.outputDescr = makePipelinePinDescrs(cfg.Pins.Outs)
+	p.inputDescr = makePipelinePinDescrs(cfg.Ins)
+	p.outputDescr = makePipelinePinDescrs(cfg.Outs)
 	pins := make(map[string][]pincfg)
 	// Create the nodes and cache their pins
 	for k, v := range cfg.Nodes {
@@ -94,15 +94,9 @@ func readPipeline(r io.Reader, p *pipeline) error {
 // PIPELINE-CFG
 
 type pipelinecfg struct {
-	Pins  pipelinepinio          `json:"pins,omitempty"`
+	Ins   map[string][]string    `json:"ins,omitempty"`
+	Outs  map[string][]string    `json:"outs,omitempty"`
 	Nodes map[string]interface{} `json:"nodes,omitempty"`
-}
-
-// --------------------------------
-// PIPELINE-PIN-IO
-type pipelinepinio struct {
-	Ins  map[string][]string `json:"ins,omitempty"`
-	Outs map[string][]string `json:"outs,omitempty"`
 }
 
 func makePipelinePinDescrs(src map[string][]string) []pipelinePinDescr {
@@ -135,13 +129,16 @@ func readNode(k string, v interface{}) (Node, error) {
 	if name == "" {
 		return nil, errors.New("Missing node for " + k)
 	}
+	if !isLegalNodeName(name) {
+		return nil, errors.New("Illegal node name: " + name)
+	}
 	cfg, _ := parse.FindTreeValue("cfg", v)
 	n, err := reg.instantiate(name, cfg)
 	return n, err
 }
 
 func readPinCfgs(v interface{}) ([]pincfg, error) {
-	_pc, ok := parse.FindTreeValue("pins", v)
+	_pc, ok := parse.FindTreeValue("outs", v)
 	if !ok {
 		// No pins are valid
 		return nil, nil
@@ -163,4 +160,13 @@ func readPinCfgs(v interface{}) ([]pincfg, error) {
 		ans = append(ans, pincfg{k, parts[0], parts[1]})
 	}
 	return ans, nil
+}
+
+func isLegalNodeName(name string) bool {
+	switch strings.ToLower(name) {
+	case
+		"ins", "outs", "args":
+		return false
+	}
+	return true
 }

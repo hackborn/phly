@@ -7,7 +7,7 @@
 				"env": "PHLY_TEXT",
 				"cla": "name"
 			},
-			"pins": {
+			"outs": {
 				"out": "pipeline:in"
 			}
 		},

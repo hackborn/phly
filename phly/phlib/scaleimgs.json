@@ -8,7 +8,7 @@
 				"cla": "name",
 				"expand": true
 			},
-			"pins": {
+			"outs": {
 				"out": "batch:in"
 			}
 		},
