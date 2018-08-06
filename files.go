@@ -7,23 +7,22 @@ import (
 )
 
 const (
+	files_input  = "in"
 	files_output = "out"
 )
 
 // files creates a file list from file and folder names.
 type files struct {
-	Value  string `json:"value,omitempty"`
-	Cla    string `json:"cla,omitempty"`
-	Env    string `json:"env,omitempty"`
-	Expand bool   `json:"expand,omitempty"`
+	Sep     string `json:"sep,omitempty"`
+	Expand  bool   `json:"expand,omitempty"`
+	Recurse bool   `json:"recurse,omitempty"`
 }
 
 func (n *files) Describe() NodeDescr {
 	descr := NodeDescr{Id: "phly/files", Name: "Files", Purpose: "Create file lists from file names and folders. Produce a single doc with a single page."}
-	descr.Cfgs = append(descr.Cfgs, CfgDescr{Name: "value", Purpose: "A value directly entered into the cfg file. Use this if no cla or env are present."})
-	descr.Cfgs = append(descr.Cfgs, CfgDescr{Name: "env", Purpose: "A value from the environment variables. Use this if no cla is available."})
-	descr.Cfgs = append(descr.Cfgs, CfgDescr{Name: "cla", Purpose: "A value from the command line arguments."})
+	descr.Cfgs = append(descr.Cfgs, CfgDescr{Name: "sep", Purpose: "A separator character. Used to split incoming strings into multiple file paths."})
 	descr.Cfgs = append(descr.Cfgs, CfgDescr{Name: "expand", Purpose: "(true or false). When true, folders are expanded to the file contents."})
+	descr.InputPins = append(descr.InputPins, PinDescr{Name: files_input, Purpose: "The folder or file list."})
 	descr.OutputPins = append(descr.OutputPins, PinDescr{Name: files_output, Purpose: "The file list."})
 	return descr
 }
@@ -33,32 +32,44 @@ func (n *files) Instantiate(args InstantiateArgs, cfg interface{}) (Node, error)
 }
 
 func (n *files) Run(args RunArgs, input, output Pins) error {
-	// Order of precedence: default, environment variable, command line arg.
-	value := n.Value
-	if n.Env != "" {
-		if v, ok := os.LookupEnv(n.Env); ok {
-			value = v
-		}
-	}
-	cla := args.ClaValue(n.Cla)
-	if cla != "" {
-		value = cla
-	}
 	doc := &Doc{MimeType: texttype}
 	page := doc.NewPage("")
-	list := strings.Split(value, ";")
+	srcs := input.Get(files_input)
+	var err error
+	if srcs != nil {
+		for _, sdoc := range srcs {
+			for _, spage := range sdoc.Pages {
+				for _, sitem := range spage.Items {
+					err = MergeErrors(err, n.addItem(sitem, page))
+				}
+			}
+		}
+	}
+	if err != nil {
+		return err
+	}
+	output.Add(text_txtoutput, doc)
+	return nil
+}
+
+func (n *files) addItem(item interface{}, page *Page) error {
+	s, ok := item.(string)
+	if !ok {
+		return BadRequestErr
+	}
+	list := []string{s}
+	if n.Sep != "" {
+		list = strings.Split(s, n.Sep)
+	}
+	var err error
 	for _, item := range list {
 		if n.Expand {
-			err := n.expand(item, page)
-			if err != nil {
-				return err
-			}
+			err = MergeErrors(err, n.expand(item, page))
 		} else {
 			page.AddItem(item)
 		}
 	}
-	output.Add(text_txtoutput, doc)
-	return nil
+	return err
 }
 
 func (n *files) expand(path string, page *Page) error {

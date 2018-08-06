@@ -11,6 +11,7 @@ type Pins interface {
 	Count() int
 	Get(name string) []*Doc
 	Add(name string, doc *Doc)
+	Remove(name string) []*Doc
 	Walk(fn PinsWalkFunc)
 	Describe()
 }
@@ -37,6 +38,15 @@ func (p *pins) Add(name string, doc *Doc) {
 	slice := p.all[name]
 	slice = append(slice, doc)
 	p.all[name] = slice
+}
+
+func (p *pins) Remove(name string) []*Doc {
+	if p.all == nil {
+		return nil
+	}
+	docs := p.all[name]
+	delete(p.all, name)
+	return docs
 }
 
 func (p *pins) Walk(fn PinsWalkFunc) {

@@ -3,6 +3,7 @@ package phly
 import (
 	"errors"
 	"github.com/micro-go/parse"
+	"os"
 	"strings"
 )
 
@@ -10,7 +11,9 @@ import (
 // PIPELINE
 
 type pipeline struct {
+	args        pipeline_args         `json:"-"`
 	file        string                `json:"-"`
+	ins         []connection          `json:"-"`
 	nodes       map[string]*container `json:"-"`
 	inputDescr  []pipelinePinDescr    `json:"-"`
 	outputDescr []pipelinePinDescr    `json:"-"`
@@ -45,8 +48,7 @@ func (p *pipeline) Instantiate(args InstantiateArgs, cfg interface{}) (Node, err
 }
 
 func (p *pipeline) Run(args RunArgs, input, output Pins) error {
-	// Make my input and sources
-	inputs, err := p.gatherInputs(input)
+	inputs, err := p.gatherInputs(args, input)
 	if err != nil {
 		return err
 	}
@@ -74,6 +76,14 @@ func (p *pipeline) add(name string, n Node) error {
 	return nil
 }
 
+func (p *pipeline) addInput(srcpin string, dstnode *container, dstpin string) error {
+	if dstnode == nil || dstnode.name != "args" {
+		return unsupportedInputErr
+	}
+	p.ins = append(p.ins, connection{srcpin, dstnode, dstpin})
+	return nil
+}
+
 // validate() verifies that the graph is valid.
 func (p *pipeline) validate() error {
 	descriptions := make(map[string]NodeDescr)
@@ -83,6 +93,11 @@ func (p *pipeline) validate() error {
 
 	for _, n := range p.nodes {
 		for _, con := range n.inputs {
+			// Input that points to my args list has different rules
+			if con.dstNode != nil && con.dstNode.name == "args" {
+				continue
+			}
+
 			if con.dstNode == nil || con.dstNode.node == nil {
 				return errors.New("Node " + n.name + " has no destination for input pin " + con.srcPin)
 			}
@@ -115,20 +130,30 @@ func (p *pipeline) validate() error {
 	return nil
 }
 
-func (p *pipeline) gatherInputs(src Pins) (runnerInput, error) {
+func (p *pipeline) gatherInputs(args RunArgs, src Pins) (runnerInput, error) {
 	ri := runnerInput{}
-	if src == nil || src.Count() < 1 {
-		return ri, nil
-	}
-	// Each input gets turned into an entry pointing to one of my nodes.
-	for _, descr := range p.inputDescr {
-		docs := src.Get(descr.Name)
-		if docs != nil {
-			for _, conn := range descr.connections {
-				ri.add(conn.DstNode, conn.DstPin, docs)
+
+	if src != nil && src.Count() > 0 {
+		for _, descr := range p.inputDescr {
+			docs := src.Remove(descr.Name)
+			if docs != nil {
+				for _, conn := range descr.connections {
+					ri.add(conn.DstNode, conn.DstPin, docs)
+				}
 			}
 		}
-
+	}
+	// Apply arguments. We have to find all nodes that have argument inputs.
+	for _, dstn := range p.nodes {
+		for _, conn := range dstn.inputs {
+			if conn.dstNode.name == "args" {
+				doc := p.args.valueDoc(args, conn.dstPin)
+				if doc != nil {
+					docs := []*Doc{doc}
+					ri.add(dstn.name, conn.srcPin, docs)
+				}
+			}
+		}
 	}
 	return ri, nil
 }
@@ -163,6 +188,95 @@ func (p *pipeline) gatherSources(input runnerInput) ([]*container, error) {
 }
 
 // --------------------------------
+// PIPELINE-ARGS
+
+type arg_format string
+
+const (
+	empty_format  arg_format = ""
+	string_format arg_format = "string"
+)
+
+// pipeline_args provides a list of all pipeline args.
+type pipeline_args struct {
+	env  string
+	args map[string]pipeline_arg
+}
+
+func (p *pipeline_args) make(fmt arg_format, all map[string]string) error {
+	if all == nil {
+		return nil
+	}
+	for k, v := range all {
+		_, exists := p.arg(k)
+		if exists {
+			return errors.New("Duplicate arg: " + k)
+		}
+		p.setArg(k, string_format, v)
+	}
+	return nil
+}
+
+// valueDoc() answers a new doc on the given arg, resolving input sources.
+func (p *pipeline_args) valueDoc(args RunArgs, name string) *Doc {
+	a, ok := p.arg(name)
+	if !ok {
+		return nil
+	}
+	// Make env name
+	env_name := ""
+	if p.env != "" {
+		env_name = p.env + strings.ToUpper(name)
+	}
+	// XXX Haven't implemented CLAs yet.
+	cla_name := ""
+	return a.valueDoc(args, env_name, cla_name)
+}
+
+func (p *pipeline_args) arg(name string) (pipeline_arg, bool) {
+	if p.args == nil {
+		return pipeline_arg{}, false
+	}
+	return p.args[name], true
+}
+
+func (p *pipeline_args) setArg(name string, format arg_format, value string) {
+	if p.args == nil {
+		p.args = make(map[string]pipeline_arg)
+	}
+	p.args[name] = pipeline_arg{format, value}
+}
+
+// --------------------------------
+// PIPELINE-ARG
+
+// pipeline_arg is a single argument into the pipeline.
+type pipeline_arg struct {
+	format arg_format
+	value  string
+}
+
+// valueDoc() answers a new doc on the given arg, resolving input sources.
+func (p pipeline_arg) valueDoc(args RunArgs, env_name, cla_name string) *Doc {
+	// Order of precedence: default value, environment variable, command line arg.
+	value := p.value
+	if env_name != "" {
+		if v, ok := os.LookupEnv(env_name); ok {
+			value = v
+		}
+	}
+	cla := args.ClaValue(cla_name)
+	if cla != "" {
+		value = cla
+	}
+
+	// Note: Currently ignoring the possibility of other types, since we only have string.
+	doc := &Doc{MimeType: texttype}
+	doc.NewPage("").AddItem(value)
+	return doc
+}
+
+// --------------------------------
 // CONTAINER
 
 // container decorates a node with the input and output connections.
@@ -173,12 +287,25 @@ type container struct {
 	outputs []connection
 }
 
+var (
+	args_container = &container{name: "args"}
+)
+
 func (c *container) connect(srcpin string, dstnode *container, dstpin string) error {
 	if dstnode == nil || dstnode.node == nil {
 		return BadRequestErr
 	}
 	c.outputs = append(c.outputs, connection{srcpin, dstnode, dstpin})
 	dstnode.inputs = append(dstnode.inputs, connection{dstpin, c, srcpin})
+	return nil
+}
+
+// connectInput creates a one-way connection, for when we don't have the other node.
+func (c *container) connectInput(srcpin string, dstnode *container, dstpin string) error {
+	if dstnode == nil || dstnode.name == "" {
+		return BadRequestErr
+	}
+	c.inputs = append(c.inputs, connection{srcpin, dstnode, dstpin})
 	return nil
 }
 

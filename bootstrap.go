@@ -2,6 +2,7 @@ package phly
 
 import (
 	"math/rand"
+	"mime"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -13,6 +14,12 @@ var (
 	env = &environment{}
 
 	rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	texttype = mime.TypeByExtension(".txt")
+)
+
+const (
+	text_txtoutput = "out"
 )
 
 func init() {
@@ -26,7 +33,6 @@ func init() {
 	Register(&batch{})
 	Register(&files{})
 	Register(&pipeline{})
-	Register(&text{})
 }
 
 func factoryPhlibPath() string {

@@ -1,12 +1,20 @@
 {
+	"args": {
+		"env": "PHLY_SCALEIMGS_",
+		"strings": {
+			"files": "./phlib/media/dog.jpg"
+		}
+	},
 	"nodes": {
 		"files": {
 			"node": "phly/files",
 			"cfg": {
-				"value": "",
-				"env": "PHLY_TEXT",
-				"cla": "name",
-				"expand": true
+				"sep": ";",
+				"expand": true,
+				"recurse": false
+			},
+			"ins": {
+				"in": "args:files"
 			},
 			"outs": {
 				"out": "batch:in"

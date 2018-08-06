@@ -13,6 +13,7 @@ var (
 	unknownBlockTypeErr      = errors.New("Unknown block type")
 	unfinishedPipelineErr    = errors.New("The pipeline hasn't finished but can't continue")
 	unsupportedConversionErr = errors.New("Unsupported conversion")
+	unsupportedInputErr      = errors.New("Unsupported input")
 	wrongFormatPinsErr       = errors.New("Pins in the wrong format")
 	wrongMagicErr            = errors.New("Wrong magic")
 )

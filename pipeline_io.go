@@ -38,27 +38,32 @@ func readPipeline(r io.Reader, p *pipeline) error {
 	}
 	p.inputDescr = makePipelinePinDescrs(cfg.Ins)
 	p.outputDescr = makePipelinePinDescrs(cfg.Outs)
-	pins := make(map[string][]pincfg)
+	node_ins := make(map[string][]pincfg)
+	node_outs := make(map[string][]pincfg)
+
+	// Read the args
+	args, err := cfg.Args.asArgs()
+	if err != nil {
+		return err
+	}
+	p.args = args
+
 	// Create the nodes and cache their pins
 	for k, v := range cfg.Nodes {
 		n, err := readNode(k, v)
 		if err != nil {
 			return err
 		}
-		err = p.add(k, n)
+		err = MergeErrors(err, p.add(k, n))
+		err = MergeErrors(err, readPinCfgsTo("outs", v, k, node_outs))
+		err = MergeErrors(err, readPinCfgsTo("ins", v, k, node_ins))
 		if err != nil {
 			return err
-		}
-		pc, err := readPinCfgs(v)
-		if err != nil {
-			return err
-		}
-		if pc != nil {
-			pins[k] = pc
 		}
 	}
-	// Apply the pins
-	for k, pinlist := range pins {
+
+	// Apply the out pins
+	for k, pinlist := range node_outs {
 		srcn, ok := p.nodes[k]
 		if !ok || srcn == nil {
 			return errors.New("Pin on missing node " + k)
@@ -74,6 +79,27 @@ func readPipeline(r io.Reader, p *pipeline) error {
 			}
 		}
 	}
+
+	// Apply the in pins
+	// NOTE: Currently just used for connecting pipelines to the args list.
+	for k, pinlist := range node_ins {
+		srcn, ok := p.nodes[k]
+		if !ok || srcn == nil {
+			return errors.New("Pin on missing node " + k)
+		}
+		for _, pin := range pinlist {
+			if pin.dstNode == "args" {
+				err = MergeErrors(err, p.addInput(pin.srcPin, args_container, pin.dstPin))
+				err = MergeErrors(err, srcn.connectInput(pin.srcPin, args_container, pin.dstPin))
+			} else {
+				return errors.New("Invalid in pin on " + pin.dstNode + " - ins are limited to args")
+			}
+		}
+	}
+	if err != nil {
+		return err
+	}
+
 	// Hookup my inputs. They point to an empty container, since there's no
 	// container for the pipeline. Inputs aren't traversed so this is fine.
 	empty_container := &container{node: p}
@@ -86,6 +112,7 @@ func readPipeline(r io.Reader, p *pipeline) error {
 			dstn.inputs = append(dstn.inputs, connection{conn.DstPin, empty_container, descr.Name})
 		}
 	}
+
 	// Validate
 	return p.validate()
 }
@@ -94,6 +121,7 @@ func readPipeline(r io.Reader, p *pipeline) error {
 // PIPELINE-CFG
 
 type pipelinecfg struct {
+	Args  pipeline_args_io       `json:"args,omitempty"`
 	Ins   map[string][]string    `json:"ins,omitempty"`
 	Outs  map[string][]string    `json:"outs,omitempty"`
 	Nodes map[string]interface{} `json:"nodes,omitempty"`
@@ -110,6 +138,20 @@ func makePipelinePinDescrs(src map[string][]string) []pipelinePinDescr {
 		dst = append(dst, descr)
 	}
 	return dst
+}
+
+// --------------------------------
+// PIPELINE-ARGS-IO
+
+type pipeline_args_io struct {
+	Env     string            `json:"env,omitempty"`
+	Strings map[string]string `json:"strings,omitempty"`
+}
+
+func (p pipeline_args_io) asArgs() (pipeline_args, error) {
+	a := &pipeline_args{env: p.Env}
+	err := a.make(string_format, p.Strings)
+	return *a, err
 }
 
 // --------------------------------
@@ -137,8 +179,19 @@ func readNode(k string, v interface{}) (Node, error) {
 	return n, err
 }
 
-func readPinCfgs(v interface{}) ([]pincfg, error) {
-	_pc, ok := parse.FindTreeValue("outs", v)
+func readPinCfgsTo(name string, v interface{}, dstkey string, dst map[string][]pincfg) error {
+	pc, err := readPinCfgs(name, v)
+	if err != nil {
+		return err
+	}
+	if pc != nil {
+		dst[dstkey] = pc
+	}
+	return nil
+}
+
+func readPinCfgs(name string, v interface{}) ([]pincfg, error) {
+	_pc, ok := parse.FindTreeValue(name, v)
 	if !ok {
 		// No pins are valid
 		return nil, nil

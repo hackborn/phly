@@ -1,21 +1,11 @@
 {
 	"args": {
+		"env": "PHLY_SCALEIMG_",
 		"strings": {
 			"file": "./phlib/media/dog.jpg"
 		}
 	},
 	"nodes": {
-		"file": {
-			"node": "phly/text",
-			"cfg": {
-				"value": "./phlib/media/dog.jpg",
-				"env": "PHLY_TEXT",
-				"cla": "name"
-			},
-			"outs": {
-				"out": "pipeline:in"
-			}
-		},
 		"pipeline": {
 			"node": "phly/pipeline",
 			"cfg": {
