@@ -37,35 +37,23 @@ type InstantiateArgs struct {
 // RunArgs provides arguments to the node during the run.
 type RunArgs struct {
 	Env        Environment
-	Cla        []string // Command line arguments
-	WorkingDir string   // All relative file paths will use this as the root.
+	WorkingDir string            // All relative file paths will use this as the root.
+	cla        map[string]string // Command line arguments
 	Fields     map[string]interface{}
 	nodename   string // The name of the node currently using this run.
 }
 
 func (r *RunArgs) copy() RunArgs {
 	fields := make(map[string]interface{})
-	return RunArgs{r.Env, r.Cla, r.WorkingDir, fields, r.nodename}
+	return RunArgs{r.Env, r.WorkingDir, r.cla, fields, r.nodename}
 }
 
 // ClaValue() answers the command line argument value for the given name.
 func (r *RunArgs) ClaValue(name string) string {
-	if name == "" {
+	if name == "" || r.cla == nil {
 		return ""
 	}
-	// Prepend the current node name.
-	if r.nodename != "" {
-		name = r.nodename + "." + name
-	}
-	for i, v := range r.Cla {
-		if name == v {
-			if i+1 < len(r.Cla) {
-				return r.Cla[i+1]
-			}
-			return ""
-		}
-	}
-	return ""
+	return r.cla[name]
 }
 
 // Filename() answers an absolute filename for the supplied filename.

@@ -11,22 +11,22 @@ import (
 )
 
 func RunApp() (Pins, error) {
-	filename, err := readCla(os.Args)
+	filename, clas, err := readCla(os.Args)
 	if err != nil {
 		return nil, err
 	}
 	if filename == "" {
 		return nil, nil
 	}
-	return runPipeline(filename)
+	return runPipeline(filename, clas)
 }
 
-func runPipeline(filename string) (Pins, error) {
+func runPipeline(filename string, clas map[string]string) (Pins, error) {
 	p, err := LoadPipeline(filename)
 	if err != nil {
 		return nil, err
 	}
-	args := RunArgs{Env: env, Cla: os.Args, WorkingDir: workingDir(filename)}
+	args := RunArgs{Env: env, WorkingDir: workingDir(filename), cla: clas}
 
 	input := &pins{}
 	output := &pins{}
@@ -34,33 +34,42 @@ func runPipeline(filename string) (Pins, error) {
 	return output, err
 }
 
-func readCla(args []string) (string, error) {
+func readCla(args []string) (string, map[string]string, error) {
+	clas := make(map[string]string)
 	token := parse.NewStringToken(args...)
 	// Skip the app name
 	token.Next()
 	filename := ""
-	for a, err := token.Next(); err == nil; a, err = token.Next() {
-		switch a {
+	for cur, err := token.Next(); err == nil; cur, err = token.Next() {
+		// Handle commands
+		switch cur {
 		case "-vars":
 			describeVars()
-			return "", nil
+			return "", nil, nil
 		case "-nodes":
 			describeNodes()
-			return "", nil
+			return "", nil, nil
 		case "-markdown":
 			markdownNodes()
-			return "", nil
+			return "", nil, nil
 		}
 		// First token is the file
 		if filename == "" {
-			filename = a
+			filename = cur
+		} else {
+			// All either args are CLA key / value pairs
+			nxt, err := token.Next()
+			if err != nil {
+				return "", nil, err
+			}
+			clas[cur] = nxt
 		}
 	}
 	// Default. Primarily for testing. Should probably make this configurable.
 	if filename == "" {
 		filename = `scaleimg.json`
 	}
-	return filename, nil
+	return filename, clas, nil
 }
 
 func describeVars() {

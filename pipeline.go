@@ -228,8 +228,7 @@ func (p *pipeline_args) valueDoc(args RunArgs, name string) *Doc {
 	if p.env != "" {
 		env_name = p.env + strings.ToUpper(name)
 	}
-	// XXX Haven't implemented CLAs yet.
-	cla_name := ""
+	cla_name := name
 	return a.valueDoc(args, env_name, cla_name)
 }
 
