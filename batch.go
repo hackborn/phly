@@ -53,11 +53,11 @@ func (n *batch) Instantiate(args InstantiateArgs, cfg interface{}) (Node, error)
 	return &batch{args: args, cfg: cfg, descr: descr}, nil
 }
 
-func (n *batch) Run(args RunArgs, input, output Pins) error {
+func (n *batch) Run(args RunArgs, input Pins, sender PinSender) (Flow, error) {
 	count, err := n.getCount(args)
 	batch_input := n.flattenInput(input)
 	if err != nil || batch_input.len() < 1 {
-		return err
+		return nil, err
 	}
 	// Don't create more threads than we need
 	if batch_input.len() < count {
@@ -75,21 +75,24 @@ func (n *batch) Run(args RunArgs, input, output Pins) error {
 		// many threads even if one errors in hopes we get through the list faster.
 		if err2 == nil {
 			wg.Add(1)
-			go n.run(&wg, node, args.copy(), batch_input, &batch_output)
+			go n.run(&wg, node, args.copy(), batch_input, &batch_output, sender)
 		}
 	}
 	wg.Wait()
-	return err
+	return Running, err
 }
 
-func (n *batch) run(wg *sync.WaitGroup, node Node, args RunArgs, input *shuttle, output *shuttle) {
+func (n *batch) Stop() error {
+	return nil
+}
+
+func (n *batch) run(wg *sync.WaitGroup, node Node, args RunArgs, input *shuttle, output *shuttle, sender PinSender) {
 	defer wg.Done()
 	for _i, err := input.pop(); err == nil; _i, err = input.pop() {
 		if pd, ok := _i.(*pindoc); ok && pd.doc != nil {
 			pinin := &pins{}
-			pinout := &pins{}
 			pinin.Add(pd.pin, pd.doc)
-			err := node.Run(args, pinin, pinout)
+			_, err := node.Run(args, pinin, sender)
 			if err != nil {
 				fmt.Println("batch err", err)
 			}

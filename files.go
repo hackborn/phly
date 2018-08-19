@@ -31,7 +31,7 @@ func (n *files) Instantiate(args InstantiateArgs, cfg interface{}) (Node, error)
 	return &files{}, nil
 }
 
-func (n *files) Run(args RunArgs, input, output Pins) error {
+func (n *files) Run(args RunArgs, input Pins, sender PinSender) (Flow, error) {
 	doc := &Doc{MimeType: texttype}
 	page := doc.NewPage("")
 	srcs := input.Get(files_input)
@@ -46,9 +46,15 @@ func (n *files) Run(args RunArgs, input, output Pins) error {
 		}
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
-	output.Add(text_txtoutput, doc)
+	pins := NewPins()
+	pins.Add(text_txtoutput, doc)
+	sender.SendPins(n, pins)
+	return Finished, nil
+}
+
+func (n *files) Stop() error {
 	return nil
 }
 

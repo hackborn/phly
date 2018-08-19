@@ -8,9 +8,10 @@ import (
 // NODE
 
 // Node performs abstract document processing.
+// Nodes that need to perform clean up should implement io.Closer.
 type Node interface {
 	Describe() NodeDescr
-	Run(args RunArgs, input, output Pins) error
+	Run(args RunArgs, input Pins, sender PinSender) (Flow, error)
 }
 
 // --------------------------------
@@ -21,6 +22,15 @@ type Node interface {
 type NodeFactory interface {
 	Describe() NodeDescr
 	Instantiate(args InstantiateArgs, tree interface{}) (Node, error)
+}
+
+// --------------------------------
+// PIN-SENDER
+
+// PinSender sends pins from a node to a destination.
+type PinSender interface {
+	SendPins(Node, Pins)
+	SendFinished(Node, error)
 }
 
 // --------------------------------
@@ -37,15 +47,15 @@ type InstantiateArgs struct {
 // RunArgs provides arguments to the node during the run.
 type RunArgs struct {
 	Env        Environment
-	WorkingDir string            // All relative file paths will use this as the root.
-	cla        map[string]string // Command line arguments
 	Fields     map[string]interface{}
-	nodename   string // The name of the node currently using this run.
+	workingdir string            // All relative file paths will use this as the root.
+	cla        map[string]string // Command line arguments
+	stop       chan struct{}
 }
 
 func (r *RunArgs) copy() RunArgs {
 	fields := make(map[string]interface{})
-	return RunArgs{r.Env, r.WorkingDir, r.cla, fields, r.nodename}
+	return RunArgs{r.Env, fields, r.workingdir, r.cla, r.stop}
 }
 
 // ClaValue() answers the command line argument value for the given name.
@@ -63,7 +73,7 @@ func (r *RunArgs) Filename(rel string) string {
 	if filepath.IsAbs(rel) {
 		return rel
 	}
-	abs, err := filepath.Abs(filepath.Join(r.WorkingDir, rel))
+	abs, err := filepath.Abs(filepath.Join(r.workingdir, rel))
 	if err != nil {
 		return rel
 	}

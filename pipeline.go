@@ -3,20 +3,43 @@ package phly
 import (
 	"errors"
 	"github.com/micro-go/parse"
+	"io"
 	"os"
 	"strings"
+	"sync"
 )
 
 // --------------------------------
-// PIPELINE
+// PIPELINE interface
+
+type Pipeline interface {
+	Start(StartArgs) error
+	Stop() error
+	Wait() error
+}
+
+// --------------------------------
+// PIPELINE start
+
+// StartArgs provides arguments when starting the pipeline.
+type StartArgs struct {
+	Cla map[string]string // Command line arguments
+}
+
+// --------------------------------
+// PIPELINE struct
 
 type pipeline struct {
+	workingdir  string                `json:"-"`
 	args        pipeline_args         `json:"-"`
 	file        string                `json:"-"`
 	ins         []connection          `json:"-"`
 	nodes       map[string]*container `json:"-"`
 	inputDescr  []pipelinePinDescr    `json:"-"`
 	outputDescr []pipelinePinDescr    `json:"-"`
+	// running
+	stop chan struct{}  `json:"-"`
+	wg   sync.WaitGroup `json:"-"`
 }
 
 func (p *pipeline) Describe() NodeDescr {
@@ -47,21 +70,53 @@ func (p *pipeline) Instantiate(args InstantiateArgs, cfg interface{}) (Node, err
 	return ans, nil
 }
 
-func (p *pipeline) Run(args RunArgs, input, output Pins) error {
+func (p *pipeline) Run(args RunArgs, input Pins, sender PinSender) (Flow, error) {
+	// Override the run args with my values
+	if args.stop == nil {
+		args.stop = make(chan struct{})
+	}
+	// Clear out any previous run
+	p.stop = args.stop
+	p.Wait()
+
+	args.workingdir = p.workingdir
+
 	inputs, err := p.gatherInputs(args, input)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	sources, err := p.gatherSources(inputs)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	r := &runner{}
-	outs, err := r.run(args, p, sources, inputs)
-	if outs != nil {
-		outs.Describe()
-	}
+	_, err = r.runAsync(args, p, sources, inputs)
+	//	outs, err := r.runAsync(args, p, sources, inputs)
+	//	if outs != nil {
+	//		outs.Describe()
+	//	}
+	return Running, err
+}
+
+func (p *pipeline) Start(sa StartArgs) error {
+	p.Stop()
+	input := &pins{}
+	args := RunArgs{Env: env, cla: sa.Cla}
+	_, err := p.Run(args, input, nil)
 	return err
+}
+
+func (p *pipeline) Stop() error {
+	if p.stop != nil {
+		close(p.stop)
+		p.stop = nil
+	}
+	return nil
+}
+
+func (p *pipeline) Wait() error {
+	p.wg.Wait()
+	return nil
 }
 
 func (p *pipeline) add(name string, n Node) error {
@@ -203,16 +258,19 @@ type pipeline_args struct {
 	args map[string]pipeline_arg
 }
 
-func (p *pipeline_args) make(fmt arg_format, all map[string]string) error {
+func (p *pipeline_args) make(frmt arg_format, all map[string]interface{}) error {
 	if all == nil {
 		return nil
 	}
-	for k, v := range all {
+	for k, _v := range all {
 		_, exists := p.arg(k)
 		if exists {
 			return errors.New("Duplicate arg: " + k)
 		}
-		p.setArg(k, string_format, v)
+		switch v := _v.(type) {
+		case string:
+			p.setArg(k, string_format, v)
+		}
 	}
 	return nil
 }
@@ -236,7 +294,8 @@ func (p *pipeline_args) arg(name string) (pipeline_arg, bool) {
 	if p.args == nil {
 		return pipeline_arg{}, false
 	}
-	return p.args[name], true
+	ans, ok := p.args[name]
+	return ans, ok
 }
 
 func (p *pipeline_args) setArg(name string, format arg_format, value string) {
@@ -305,6 +364,14 @@ func (c *container) connectInput(srcpin string, dstnode *container, dstpin strin
 		return BadRequestErr
 	}
 	c.inputs = append(c.inputs, connection{srcpin, dstnode, dstpin})
+	return nil
+}
+
+// close() closes the node, if possible.
+func (c *container) close() error {
+	if closer, ok := c.node.(io.Closer); ok && closer != nil {
+		return closer.Close()
+	}
 	return nil
 }
 

@@ -26,6 +26,7 @@ func init() {
 	// Prepare environment
 	env.phlibPaths = append(env.phlibPaths, factoryPhlibPath())
 	RegisterVar("cpus", "Number of CPUs", strconv.Itoa(runtime.NumCPU()))
+	RegisterVar("os", "OS name", runtime.GOOS)
 	RegisterVar("rndu", "Random unipolar number (0 to 1)", rndUnipolar)
 	RegisterVar("rndb", "Random bipolar number (-1 to 1)", rndBipolar)
 
@@ -33,6 +34,7 @@ func init() {
 	Register(&batch{})
 	Register(&files{})
 	Register(&pipeline{})
+	Register(&run{})
 }
 
 func factoryPhlibPath() string {

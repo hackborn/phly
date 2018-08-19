@@ -6,10 +6,11 @@ import (
 	"github.com/micro-go/parse"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
-func LoadPipeline(name string) (Node, error) {
+func LoadPipeline(name string) (Pipeline, error) {
 	filename := env.FindFile(name)
 	f, err := os.Open(filename)
 	if err != nil {
@@ -19,20 +20,23 @@ func LoadPipeline(name string) (Node, error) {
 	return ReadPipeline(f)
 }
 
-func ReadPipeline(r io.Reader) (Node, error) {
+func ReadPipeline(r io.Reader) (Pipeline, error) {
 	p := &pipeline{}
 	err := readPipeline(r, p)
 	return p, err
 }
 
 func readPipeline(r io.Reader, p *pipeline) error {
+	p.workingdir = workingDirFrom(r)
+
 	d := json.NewDecoder(r)
-	cfg := pipelinecfg{}
-	err := d.Decode(&cfg)
+	cfg := &pipelinecfg{}
+	err := d.Decode(cfg)
 	if err != nil {
 		return err
 	}
-	// fmt.Println("LOADED", cfg)
+	cfg.applyEnvVarsToPins()
+	//	fmt.Println("LOADED", cfg)
 	if len(cfg.Nodes) < 1 {
 		return BadRequestErr
 	}
@@ -127,6 +131,63 @@ type pipelinecfg struct {
 	Nodes map[string]interface{} `json:"nodes,omitempty"`
 }
 
+func (p *pipelinecfg) applyEnvVarsToPins() {
+	// Replace any pin names with environment variables. Note this is only
+	// the names, and used for doing things like allowing different values
+	// for different platforms.
+	p.applyEnvVarsToNodes()
+	applyEnvVarsToSingle(p.Args.Strings)
+	applyEnvVarsToMultiple(p.Ins)
+	applyEnvVarsToMultiple(p.Outs)
+}
+
+func (p *pipelinecfg) applyEnvVarsToNodes() {
+	for _, n := range p.Nodes {
+		applyEnvVarsToSingle(treeMapStrings("ins", n))
+		applyEnvVarsToSingle(treeMapStrings("outs", n))
+	}
+}
+
+func applyEnvVarsToSingle(m map[string]interface{}) {
+	if m == nil {
+		return
+	}
+	for k, v := range m {
+		newk := env.ReplaceVars(k, nil)
+		newv, changed := applyEnvVarsToInterface(v)
+		if changed || newk != k {
+			delete(m, k)
+			m[newk] = newv
+		}
+	}
+}
+
+func applyEnvVarsToMultiple(m map[string][]string) {
+	if m == nil {
+		return
+	}
+	for k, v := range m {
+		newk := env.ReplaceVars(k, nil)
+		if newk != k {
+			delete(m, k)
+			m[newk] = v
+		}
+	}
+}
+
+// applyEnvVarsToInterface() applies the environment variables to an unknown type,
+// answering the new value and true if it changed.
+func applyEnvVarsToInterface(_v interface{}) (interface{}, bool) {
+	switch v := _v.(type) {
+	case string:
+		newv := env.ReplaceVars(v, nil)
+		if v != newv {
+			return newv, true
+		}
+	}
+	return _v, false
+}
+
 func makePipelinePinDescrs(src map[string][]string) []pipelinePinDescr {
 	var dst []pipelinePinDescr
 	for k, v := range src {
@@ -140,12 +201,26 @@ func makePipelinePinDescrs(src map[string][]string) []pipelinePinDescr {
 	return dst
 }
 
+func treeMapStrings(path string, tree interface{}) map[string]interface{} {
+	if tree == nil {
+		return nil
+	}
+	_v, err := parse.TreeValue(path, tree)
+	if err != nil {
+		return nil
+	}
+	if v, ok := _v.(map[string]interface{}); ok {
+		return v
+	}
+	return nil
+}
+
 // --------------------------------
 // PIPELINE-ARGS-IO
 
 type pipeline_args_io struct {
-	Env     string            `json:"env,omitempty"`
-	Strings map[string]string `json:"strings,omitempty"`
+	Env     string                 `json:"env,omitempty"`
+	Strings map[string]interface{} `json:"strings,omitempty"`
 }
 
 func (p pipeline_args_io) asArgs() (pipeline_args, error) {
@@ -222,4 +297,11 @@ func isLegalNodeName(name string) bool {
 		return false
 	}
 	return true
+}
+
+func workingDirFrom(r io.Reader) string {
+	if n, ok := r.(namer); ok && n != nil {
+		return filepath.Dir(n.Name())
+	}
+	return ""
 }

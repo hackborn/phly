@@ -16,6 +16,10 @@ type Pins interface {
 	Describe()
 }
 
+func NewPins() Pins {
+	return &pins{}
+}
+
 type pins struct {
 	all map[string][]*Doc
 }

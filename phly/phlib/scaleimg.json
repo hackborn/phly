@@ -2,7 +2,7 @@
 	"args": {
 		"env": "PHLY_SCALEIMG_",
 		"strings": {
-			"file": "./phlib/media/dog.jpg"
+			"file": "./data/dog.jpg"
 		}
 	},
 	"nodes": {

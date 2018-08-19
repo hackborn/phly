@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"github.com/micro-go/parse"
 	"os"
-	"path/filepath"
+	"os/signal"
 	"sort"
+	"syscall"
+	//	"time"
 )
 
 func RunApp() (Pins, error) {
@@ -26,13 +28,65 @@ func runPipeline(filename string, clas map[string]string) (Pins, error) {
 	if err != nil {
 		return nil, err
 	}
-	args := RunArgs{Env: env, WorkingDir: workingDir(filename), cla: clas}
+	go func() {
+		finished := make(chan os.Signal, 1)
+		fmt.Println("signal")
+		signal.Notify(finished, os.Interrupt, syscall.SIGTERM)
+		fmt.Println("wait")
+		<-finished
+		fmt.Println("done 1")
+		p.Stop()
+		fmt.Println("done 2")
+		//		time.Sleep(1000 * time.Millisecond)
+		//		fmt.Println("done sleeping")
+	}()
+
+	// XXX Need to figure out how I get output back from the pin sender.
+	args := StartArgs{Cla: clas}
+	output := &pins{}
+	err = p.Start(args)
+	if err != nil {
+		return nil, err
+	}
+	err = p.Wait()
+	//	fmt.Println("sleep 1")
+	//	time.Sleep(1000 * time.Millisecond)
+	fmt.Println("app run done err", err)
+	return output, err
+}
+
+/*
+func runPipeline(filename string, clas map[string]string) (Pins, error) {
+	p, err := LoadPipeline(filename)
+	if err != nil {
+		return nil, err
+	}
+	stop := make(chan struct{})
+	args := RunArgs{Env: env, cla: clas, stop: stop}
 
 	input := &pins{}
 	output := &pins{}
-	err = p.Run(args, input, output)
+	go func() {
+		finished := make(chan os.Signal, 1)
+		fmt.Println("signal")
+		signal.Notify(finished, os.Interrupt, syscall.SIGTERM)
+		fmt.Println("wait")
+		<-finished
+		fmt.Println("done 1")
+		close(stop)
+		fmt.Println("done 2")
+		//		time.Sleep(1000 * time.Millisecond)
+		//		fmt.Println("done sleeping")
+	}()
+
+	// XXX Need to figure out how I get output back from the pin sender.
+	_, err = p.Run(args, input, nil)
+	//	fmt.Println("sleep 1")
+	//	time.Sleep(1000 * time.Millisecond)
+	fmt.Println("app run done err", err)
 	return output, err
 }
+*/
 
 func readCla(args []string) (string, map[string]string, error) {
 	clas := make(map[string]string)
@@ -68,6 +122,7 @@ func readCla(args []string) (string, map[string]string, error) {
 	// Default. Primarily for testing. Should probably make this configurable.
 	if filename == "" {
 		filename = `scaleimg.json`
+		filename = `run.json`
 	}
 	return filename, clas, nil
 }
@@ -90,14 +145,6 @@ func markdownNodes() {
 		descr := v.Describe()
 		fmt.Println(descr.MarkdownString())
 	}
-}
-
-func workingDir(path string) string {
-	path, err := filepath.Abs(path)
-	if err != nil {
-		return ""
-	}
-	return filepath.Dir(path)
 }
 
 // --------------------------------

@@ -51,6 +51,24 @@ func (d *Doc) RemovePage(name string) bool {
 	return false
 }
 
+func (d *Doc) GetItems() []interface{} {
+	if len(d.Pages) < 1 {
+		return nil
+	}
+	return d.Pages[0].Items
+}
+
+func (d *Doc) GetStringItems() []string {
+	src := d.GetItems()
+	var dst []string
+	for _, _s := range src {
+		if s, ok := _s.(string); ok {
+			dst = append(dst, s)
+		}
+	}
+	return dst
+}
+
 // --------------------------------
 // PAGE
 

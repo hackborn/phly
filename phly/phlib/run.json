@@ -1,0 +1,23 @@
+{
+	"args": {
+		"env": "PHLY_RUN_",
+		"strings": {
+			"${os}": "./data/windows/chatter.exe",
+			"${os}_cla": "-dur 2"
+		}
+	},
+	"nodes": {
+		"run": {
+			"node": "phly/run",
+			"cfg": {
+				"sep": ";",
+				"expand": true,
+				"recurse": false
+			},
+			"ins": {
+				"cmd": "args:${os}",
+				"cla": "args:${os}_cla"
+			}
+		}
+	}
+}

@@ -1,7 +1,6 @@
 package phly
 
 import (
-	"bytes"
 	"github.com/micro-go/lock"
 	"github.com/micro-go/parse"
 	"io"
@@ -55,14 +54,14 @@ func (e *environment) FindReader(name string) io.Reader {
 		e.phlypCache = make(map[string][]byte)
 	}
 	if data, ok := e.phlypCache[resolved]; ok {
-		return bytes.NewReader(data)
+		return newNamedReader(resolved, data)
 	}
 	data, err := ioutil.ReadFile(resolved)
 	if err != nil {
 		return nil
 	}
 	e.phlypCache[resolved] = data
-	return bytes.NewReader(data)
+	return newNamedReader(resolved, data)
 }
 
 func (e *environment) ReplaceVars(s string, pairs ...interface{}) string {
