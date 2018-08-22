@@ -15,6 +15,15 @@ type Doc struct {
 	Pages    []*Page
 }
 
+func NewDocOnStringItems(n ...string) *Doc {
+	doc := &Doc{}
+	page := doc.NewPage("")
+	for _, i := range n {
+		page.Items = append(page.Items, i)
+	}
+	return doc
+}
+
 func (d *Doc) NewPage(name string) *Page {
 	page := &Page{Name: name}
 	d.Pages = append(d.Pages, page)
