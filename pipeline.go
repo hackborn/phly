@@ -2,6 +2,7 @@ package phly
 
 import (
 	"errors"
+	"fmt"
 	"github.com/micro-go/parse"
 	"io"
 	"os"
@@ -408,4 +409,8 @@ func newConnectionDescr(comp string) connectionDescr {
 		return connectionDescr{}
 	}
 	return connectionDescr{v[0], v[1]}
+}
+
+func pipelineFakeFmt() {
+	fmt.Println()
 }

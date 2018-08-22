@@ -17,8 +17,9 @@ type runnerAsync struct {
 	outs Pins
 	err  error
 	// Worker thread
-	pipe   *pipeline
-	active map[interface{}]*runnerContainer
+	originalInputs runnerInput
+	pipe           *pipeline
+	active         map[interface{}]*runnerContainer
 }
 
 // run is the basic node-running algorithm. It loops over the
@@ -52,18 +53,9 @@ func newRunnerAsync(pipe *pipeline, nodes []*container, input runnerInput) *runn
 	stopped := lock.NewAtomicBool()
 	active := make(map[interface{}]*runnerContainer)
 
-	r := &runnerAsync{stopped: stopped, pipe: pipe, active: active}
+	r := &runnerAsync{stopped: stopped, originalInputs: input, pipe: pipe, active: active}
 	for _, n := range nodes {
-		rc := r.activate(n)
-		if len(input.nodeInputs) > 0 {
-			for k, v := range input.nodeInputs {
-				if k == rc.c.name && v != nil {
-					for pin, docs := range v.all {
-						rc.addInput(pin, docs)
-					}
-				}
-			}
-		}
+		r.activate(n)
 	}
 	return r
 }
@@ -76,6 +68,20 @@ func (r *runnerAsync) activate(c *container) *runnerContainer {
 	}
 	ans := newRunnerContainer(c)
 	r.active[c.node] = ans
+
+	// Apply inputs if this is being created for the first time
+	if len(r.originalInputs.nodeInputs) > 0 {
+		for k, v := range r.originalInputs.nodeInputs {
+			if k == ans.c.name && v != nil {
+				for pin, docs := range v.all {
+					ans.addInput(pin, docs)
+				}
+				// The input has been used, remove it
+				delete(r.originalInputs.nodeInputs, k)
+			}
+		}
+	}
+
 	return ans
 }
 
@@ -93,7 +99,7 @@ func (r *runnerAsync) run(args RunArgs, pipe *pipeline, nodes []*container, inpu
 		for {
 			select {
 			case <-args.stop:
-				fmt.Println("set stoppd to true")
+				fmt.Println("set stopped to true")
 				r.stopped.SetTo(true)
 				return
 			}
