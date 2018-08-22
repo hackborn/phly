@@ -31,6 +31,11 @@ type environment struct {
 
 // FindFile() answers the full path to the phlyp by searching paths for name.
 func (e *environment) FindFile(name string) string {
+	// if this is a direct path to a file, just use it
+	if _, err := os.Stat(name); err == nil {
+		return name
+	}
+
 	defer lock.Read(&e.mutex).Unlock()
 
 	for _, dir := range e.phlibPaths {
