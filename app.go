@@ -30,13 +30,13 @@ func runPipeline(filename string, clas map[string]string) (Pins, error) {
 	}
 	go func() {
 		finished := make(chan os.Signal, 1)
-		fmt.Println("signal")
+		//		fmt.Println("signal")
 		signal.Notify(finished, os.Interrupt, syscall.SIGTERM)
-		fmt.Println("wait")
+		//		fmt.Println("wait")
 		<-finished
-		fmt.Println("done 1")
+		//		fmt.Println("done 1")
 		p.Stop()
-		fmt.Println("done 2")
+		//		fmt.Println("done 2")
 		//		time.Sleep(1000 * time.Millisecond)
 		//		fmt.Println("done sleeping")
 	}()
@@ -51,42 +51,9 @@ func runPipeline(filename string, clas map[string]string) (Pins, error) {
 	err = p.Wait()
 	//	fmt.Println("sleep 1")
 	//	time.Sleep(1000 * time.Millisecond)
-	fmt.Println("app run done err", err)
+	//	fmt.Println("app run done err", err)
 	return output, err
 }
-
-/*
-func runPipeline(filename string, clas map[string]string) (Pins, error) {
-	p, err := LoadPipeline(filename)
-	if err != nil {
-		return nil, err
-	}
-	stop := make(chan struct{})
-	args := RunArgs{Env: env, cla: clas, stop: stop}
-
-	input := &pins{}
-	output := &pins{}
-	go func() {
-		finished := make(chan os.Signal, 1)
-		fmt.Println("signal")
-		signal.Notify(finished, os.Interrupt, syscall.SIGTERM)
-		fmt.Println("wait")
-		<-finished
-		fmt.Println("done 1")
-		close(stop)
-		fmt.Println("done 2")
-		//		time.Sleep(1000 * time.Millisecond)
-		//		fmt.Println("done sleeping")
-	}()
-
-	// XXX Need to figure out how I get output back from the pin sender.
-	_, err = p.Run(args, input, nil)
-	//	fmt.Println("sleep 1")
-	//	time.Sleep(1000 * time.Millisecond)
-	fmt.Println("app run done err", err)
-	return output, err
-}
-*/
 
 func readCla(args []string) (string, map[string]string, error) {
 	clas := make(map[string]string)

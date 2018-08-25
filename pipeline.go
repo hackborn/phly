@@ -41,6 +41,7 @@ type pipeline struct {
 	// running
 	stop chan struct{}  `json:"-"`
 	wg   sync.WaitGroup `json:"-"`
+	run  *runner        `json:"-"`
 }
 
 func (p *pipeline) Describe() NodeDescr {
@@ -92,10 +93,9 @@ func (p *pipeline) Run(args RunArgs, input Pins, sender PinSender) (Flow, error)
 	}
 	r := &runner{}
 	_, err = r.runAsync(args, p, sources, inputs)
-	//	outs, err := r.runAsync(args, p, sources, inputs)
-	//	if outs != nil {
-	//		outs.Describe()
-	//	}
+	if err == nil {
+		p.run = r
+	}
 	return Running, err
 }
 
@@ -117,7 +117,12 @@ func (p *pipeline) Stop() error {
 
 func (p *pipeline) Wait() error {
 	p.wg.Wait()
-	return nil
+	var err error
+	if p.run != nil {
+		err = p.run.Error()
+		p.run = nil
+	}
+	return err
 }
 
 func (p *pipeline) add(name string, n Node) error {

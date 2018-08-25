@@ -8,6 +8,14 @@ import (
 )
 
 type runner struct {
+	ra *runnerAsync
+}
+
+func (r *runner) Error() error {
+	if r.ra != nil {
+		return r.ra.err
+	}
+	return nil
 }
 
 type runnerAsync struct {
@@ -25,6 +33,7 @@ type runnerAsync struct {
 // run is the basic node-running algorithm. It loops over the
 // current nodes, running each one, then distributing the outputs.
 func (r *runner) runAsync(args RunArgs, pipe *pipeline, nodes []*container, input runnerInput) (Pins, error) {
+	r.ra = nil
 	if args.stop == nil {
 		return nil, BadRequestErr
 	}
@@ -32,22 +41,11 @@ func (r *runner) runAsync(args RunArgs, pipe *pipeline, nodes []*container, inpu
 		return nil, BadRequestErr
 	}
 
-	ro := newRunnerAsync(pipe, nodes, input)
+	r.ra = newRunnerAsync(pipe, nodes, input)
 	pipe.wg.Add(1)
-	go ro.run(args, pipe, nodes, input)
-	return ro.outs, ro.err
-	//	return r.runAsyncWait(args, pipe, nodes, input)
+	go r.ra.run(args, pipe, nodes, input)
+	return r.ra.outs, r.ra.err
 }
-
-/*
-func (r *runner) runAsyncWait(args RunArgs, pipe *pipeline, nodes []*container, input runnerInput) (Pins, error) {
-	ro := newRunnerAsync(pipe, nodes, input)
-	ro.wg.Add(1)
-	go ro.run(args, pipe, nodes, input)
-	ro.wg.Wait()
-	return ro.outs, ro.err
-}
-*/
 
 func newRunnerAsync(pipe *pipeline, nodes []*container, input runnerInput) *runnerAsync {
 	stopped := lock.NewAtomicBool()
@@ -86,11 +84,11 @@ func (r *runnerAsync) activate(c *container) *runnerContainer {
 }
 
 func (r *runnerAsync) run(args RunArgs, pipe *pipeline, nodes []*container, input runnerInput) {
-	defer fmt.Println("runner.run done 1")
+	//	defer fmt.Println("runner.run done 1")
 	defer pipe.wg.Done()
-	defer fmt.Println("runner.run done 2")
+	//	defer fmt.Println("runner.run done 2")
 	defer r.closeActive()
-	defer fmt.Println("runner.run done 3")
+	//	defer fmt.Println("runner.run done 3")
 
 	sender := newRunnerPinSender()
 
@@ -99,7 +97,7 @@ func (r *runnerAsync) run(args RunArgs, pipe *pipeline, nodes []*container, inpu
 		for {
 			select {
 			case <-args.stop:
-				fmt.Println("set stopped to true")
+				//				fmt.Println("set stopped to true")
 				r.stopped.SetTo(true)
 				return
 			}
@@ -116,7 +114,7 @@ func (r *runnerAsync) run(args RunArgs, pipe *pipeline, nodes []*container, inpu
 	for {
 		select {
 		case <-args.stop:
-			fmt.Println("stop")
+			//			fmt.Println("stop")
 			return
 		case msg, _ := <-sender.c:
 			if msg != nil && msg.node != nil {
@@ -161,7 +159,7 @@ func (r *runnerAsync) runActive(args RunArgs, sender PinSender) {
 		}
 		rc.dirty = false
 		if flow == Finished {
-			fmt.Println("delete active")
+			//			fmt.Println("delete active")
 			delete(r.active, key)
 		}
 	}
@@ -170,19 +168,19 @@ func (r *runnerAsync) runActive(args RunArgs, sender PinSender) {
 func (r *runnerAsync) closeNode(key interface{}) {
 	if rc, ok := r.active[key]; ok && rc != nil {
 		rc.c.close()
-		fmt.Println("closeNode delete active")
+		//		fmt.Println("closeNode delete active")
 		delete(r.active, key)
 	}
 }
 
 func (r *runnerAsync) closeActive() {
-	fmt.Println("close active 1")
+	//	fmt.Println("close active 1")
 	for key, _ := range r.active {
-		fmt.Println("close node 1")
+		//		fmt.Println("close node 1")
 		r.closeNode(key)
-		fmt.Println("close node 2")
+		//		fmt.Println("close node 2")
 	}
-	fmt.Println("close active 2")
+	//	fmt.Println("close active 2")
 }
 
 func (r *runnerAsync) receiveOutput(node interface{}, pins Pins) {
