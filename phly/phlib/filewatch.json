@@ -1,0 +1,18 @@
+{
+	"nodes": {
+		"watch": {
+			"node": "phly/filewatch",
+			"cfg": {
+				"paths": ["C:\\tmp"]
+			},
+			"outs": {
+				"created": "console:in",
+				"changed": "console:in",
+				"removed": "console:in"
+			}
+		},
+		"console": {
+			"node": "phly/console"
+		}
+	}
+}

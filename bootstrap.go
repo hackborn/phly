@@ -32,7 +32,9 @@ func init() {
 
 	// Register factory nodes
 	Register(&batch{})
+	Register(&console{})
 	Register(&files{})
+	Register(&filewatch{})
 	Register(&pipeline{})
 	Register(&run{})
 }
