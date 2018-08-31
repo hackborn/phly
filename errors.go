@@ -18,6 +18,35 @@ var (
 	wrongMagicErr            = errors.New("Wrong magic")
 )
 
+// --------------------------------
+// ERR-CODE
+
+type ErrCode interface {
+	ErrorCode() int
+	Error() string
+}
+
+func NewErrCode(errcode int, errmsg string) ErrCode {
+	return &errCode{code: errcode, msg: errmsg}
+}
+
+type errCode struct {
+	code int
+	msg  string
+}
+
+func (e *errCode) ErrorCode() int {
+	return e.code
+}
+
+func (e *errCode) Error() string {
+	return e.msg
+}
+
+// --------------------------------
+// MISC
+
+// MergeErrors() answers the first non-nil error in the list.
 func MergeErrors(err ...error) error {
 	for _, a := range err {
 		if a != nil {
