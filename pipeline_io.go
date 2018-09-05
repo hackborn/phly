@@ -3,6 +3,7 @@ package phly
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/micro-go/parse"
 	"io"
 	"os"
@@ -23,6 +24,7 @@ func LoadPipeline(name string) (Pipeline, error) {
 func ReadPipeline(r io.Reader) (Pipeline, error) {
 	p := &pipeline{}
 	err := readPipeline(r, p)
+	fmt.Println("READ PIPELNE STOPPED", p.stopped)
 	return p, err
 }
 

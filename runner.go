@@ -19,8 +19,7 @@ func (r *runner) Error() error {
 }
 
 type runnerAsync struct {
-	//	wg      sync.WaitGroup
-	stopped lock.AtomicBool
+	stopped lock.AtomicInt32
 	// These are not lock protected -- the design only has them read or written from one thread at a time.
 	outs Pins
 	err  error
@@ -48,14 +47,17 @@ func (r *runner) runAsync(args RunArgs, pipe *pipeline, nodes []*container, inpu
 }
 
 func newRunnerAsync(pipe *pipeline, nodes []*container, input runnerInput) *runnerAsync {
-	stopped := lock.NewAtomicBool()
 	active := make(map[interface{}]*runnerContainer)
 
-	r := &runnerAsync{stopped: stopped, originalInputs: input, pipe: pipe, active: active}
+	r := &runnerAsync{stopped: &pipe.stopped, originalInputs: input, pipe: pipe, active: active}
 	for _, n := range nodes {
 		r.activate(n)
 	}
 	return r
+}
+
+func (r *runnerAsync) isStopped() bool {
+	return r.stopped.Get() != running
 }
 
 // activate() adds the container to the stack, preventing duplicates.
@@ -89,6 +91,7 @@ func (r *runnerAsync) run(args RunArgs, pipe *pipeline, nodes []*container, inpu
 	//	defer fmt.Println("runner.run done 2")
 	defer r.closeActive()
 	//	defer fmt.Println("runner.run done 3")
+	defer pipe.stopped.TrySetTo(runFinishedStopped, running)
 
 	sender := newRunnerPinSender()
 
@@ -97,8 +100,6 @@ func (r *runnerAsync) run(args RunArgs, pipe *pipeline, nodes []*container, inpu
 		for {
 			select {
 			case <-args.stop:
-				//				fmt.Println("set stopped to true")
-				r.stopped.SetTo(true)
 				return
 			}
 		}
@@ -144,7 +145,7 @@ func (r *runnerAsync) run(args RunArgs, pipe *pipeline, nodes []*container, inpu
 // runActive() runs all active nodes.
 func (r *runnerAsync) runActive(args RunArgs, sender PinSender) {
 	for key, rc := range r.active {
-		if r.stopped.IsTrue() {
+		if r.isStopped() {
 			return
 		}
 		if !rc.dirty {

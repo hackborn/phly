@@ -1,8 +1,10 @@
 package phly
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -10,7 +12,7 @@ import (
 
 func TestRunPipeline1(t *testing.T) {
 	// XXX Not working
-	//	testRunAndWaitPipeline(t, testPipelineData1)
+	// testRunAndWaitPipeline(t, testPipelineData1)
 }
 
 func TestRunPipeline2(t *testing.T) {
@@ -24,38 +26,25 @@ func TestRunPipeline3(t *testing.T) {
 func testRunAndWaitPipeline(t *testing.T, src string) {
 	Register(&testnode{})
 
-	p, err := ReadPipeline(strings.NewReader(src))
-	if err != nil {
-		fmt.Println(err)
-		t.Fail()
-		return
-	}
+	p, err := testReadPipeline(strings.NewReader(src))
+	testCheckFailed(t, err)
 
 	clas := make(map[string]string)
 	args := StartArgs{Cla: clas}
+
 	err = p.Start(args)
-	if err != nil {
-		fmt.Println(err)
-		t.Fail()
-		return
-	}
+	testCheckFailed(t, err)
+
 	err = p.Wait()
-	if err != nil {
-		fmt.Println(err)
-		t.Fail()
-		return
-	}
+	testCheckFailed(t, err)
+	testCheckFailed(t, testPipelineStoppedErr(p, runFinishedStopped))
 }
 
 func testFreeRunPipeline(t *testing.T, src string, dur time.Duration) {
 	Register(&testnode{})
 
 	p, err := testReadPipeline(strings.NewReader(src))
-	if err != nil {
-		fmt.Println(err)
-		t.Fail()
-		return
-	}
+	testCheckFailed(t, err)
 
 	go func() {
 		time.Sleep(dur)
@@ -65,23 +54,31 @@ func testFreeRunPipeline(t *testing.T, src string, dur time.Duration) {
 	clas := make(map[string]string)
 	args := StartArgs{Cla: clas}
 	err = p.Start(args)
-	if err != nil {
-		fmt.Println(err)
-		t.Fail()
-		return
-	}
+	testCheckFailed(t, err)
+
 	err = p.Wait()
-	if err != nil {
-		fmt.Println(err)
-		t.Fail()
-		return
-	}
+	testCheckFailed(t, err)
+	testCheckFailed(t, testPipelineStoppedErr(p, requestedStopped))
 }
 
 func testReadPipeline(r io.Reader) (*pipeline, error) {
 	p := &pipeline{}
 	err := readPipeline(r, p)
 	return p, err
+}
+
+func testCheckFailed(t *testing.T, err error) {
+	if err != nil {
+		fmt.Println(err)
+		t.Fail()
+	}
+}
+
+func testPipelineStoppedErr(p *pipeline, required int32) error {
+	if p.stopped.Get() != required {
+		return errors.New("Stopped must be " + strconv.Itoa(int(required)))
+	}
+	return nil
 }
 
 const (
