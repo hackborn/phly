@@ -73,6 +73,9 @@ func readCla(args []string) (string, map[string]string, error) {
 		case "-markdown":
 			markdownNodes()
 			return "", nil, nil
+		case "-dryrun":
+			dryrun = true
+			continue
 		}
 		// First token is the file
 		if filename == "" {

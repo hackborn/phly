@@ -48,6 +48,7 @@ type InstantiateArgs struct {
 type RunArgs struct {
 	Env        Environment
 	Fields     map[string]interface{}
+	DryRun     bool
 	workingdir string            // All relative file paths will use this as the root.
 	cla        map[string]string // Command line arguments
 	stop       chan struct{}
@@ -55,7 +56,7 @@ type RunArgs struct {
 
 func (r *RunArgs) copy() RunArgs {
 	fields := make(map[string]interface{})
-	return RunArgs{r.Env, fields, r.workingdir, r.cla, r.stop}
+	return RunArgs{r.Env, fields, r.DryRun, r.workingdir, r.cla, r.stop}
 }
 
 // ClaValue() answers the command line argument value for the given name.
@@ -79,3 +80,8 @@ func (r *RunArgs) Filename(rel string) string {
 	}
 	return abs
 }
+
+// Hack in the dry run before I make it real
+var (
+	dryrun = false
+)

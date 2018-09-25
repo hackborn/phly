@@ -102,7 +102,7 @@ func (p *pipeline) Run(args RunArgs, input Pins, sender PinSender) (Flow, error)
 func (p *pipeline) Start(sa StartArgs) error {
 	p.Stop()
 	input := &pins{}
-	args := RunArgs{Env: env, cla: sa.Cla}
+	args := RunArgs{Env: env, cla: sa.Cla, DryRun: dryrun}
 	_, err := p.Run(args, input, nil)
 	return err
 }
