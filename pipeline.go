@@ -3,6 +3,7 @@ package phly
 import (
 	"errors"
 	"fmt"
+	"github.com/micro-go/lock"
 	"github.com/micro-go/parse"
 	"io"
 	"os"
@@ -39,9 +40,10 @@ type pipeline struct {
 	inputDescr  []pipelinePinDescr    `json:"-"`
 	outputDescr []pipelinePinDescr    `json:"-"`
 	// running
-	stop chan struct{}  `json:"-"`
-	wg   sync.WaitGroup `json:"-"`
-	run  *runner        `json:"-"`
+	stopped lock.AtomicInt32_t `json:"-"` // Store the reason for stopping
+	stop    chan struct{}      `json:"-"`
+	wg      sync.WaitGroup     `json:"-"`
+	run     *runner            `json:"-"`
 }
 
 func (p *pipeline) Describe() NodeDescr {
@@ -69,6 +71,7 @@ func (p *pipeline) Instantiate(args InstantiateArgs, cfg interface{}) (Node, err
 			return nil, err
 		}
 	}
+	ans.stopped.SetTo(emptyStopped)
 	return ans, nil
 }
 
@@ -92,6 +95,7 @@ func (p *pipeline) Run(args RunArgs, input Pins, sender PinSender) (Flow, error)
 		return nil, err
 	}
 	r := &runner{}
+	p.stopped.SetTo(running)
 	_, err = r.runAsync(args, p, sources, inputs)
 	if err == nil {
 		p.run = r
@@ -108,6 +112,7 @@ func (p *pipeline) Start(sa StartArgs) error {
 }
 
 func (p *pipeline) Stop() error {
+	p.stopped.TrySetTo(requestedStopped, running)
 	if p.stop != nil {
 		close(p.stop)
 		p.stop = nil
@@ -419,3 +424,13 @@ func newConnectionDescr(comp string) connectionDescr {
 func pipelineFakeFmt() {
 	fmt.Println()
 }
+
+// --------------------------------
+// STOPPED
+
+const (
+	emptyStopped       = iota // The pipeline has not been started
+	running                   // The pipeline is running
+	requestedStopped          // A client has requested the pipeline to stop
+	runFinishedStopped        // The pipeline processing finished
+)
