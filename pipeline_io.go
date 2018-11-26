@@ -3,7 +3,6 @@ package phly
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/micro-go/parse"
 	"io"
 	"os"
@@ -24,7 +23,6 @@ func LoadPipeline(name string) (Pipeline, error) {
 func ReadPipeline(r io.Reader) (Pipeline, error) {
 	p := &pipeline{}
 	err := readPipeline(r, p)
-	fmt.Println("READ PIPELNE STOPPED", p.stopped)
 	return p, err
 }
 
@@ -35,12 +33,12 @@ func readPipeline(r io.Reader, p *pipeline) error {
 	cfg := &pipelinecfg{}
 	err := d.Decode(cfg)
 	if err != nil {
-		return err
+		return NewParseError(err)
 	}
 	cfg.applyEnvVarsToPins()
 	//	fmt.Println("LOADED", cfg)
 	if len(cfg.Nodes) < 1 {
-		return BadRequestErr
+		return NewBadRequestError("No nodes")
 	}
 	p.inputDescr = makePipelinePinDescrs(cfg.Ins)
 	p.outputDescr = makePipelinePinDescrs(cfg.Outs)
@@ -94,11 +92,14 @@ func readPipeline(r io.Reader, p *pipeline) error {
 			return errors.New("Pin on missing node " + k)
 		}
 		for _, pin := range pinlist {
-			if pin.dstNode == "args" {
+			if pin.dstNode == args_container.name {
 				err = MergeErrors(err, p.addInput(pin.srcPin, args_container, pin.dstPin))
 				err = MergeErrors(err, srcn.connectInput(pin.srcPin, args_container, pin.dstPin))
+			} else if pin.dstNode == pipeline_container.name {
+				err = MergeErrors(err, p.addInput(pin.srcPin, pipeline_container, pin.dstPin))
+				err = MergeErrors(err, srcn.connectInput(pin.srcPin, pipeline_container, pin.dstPin))
 			} else {
-				return errors.New("Invalid in pin on " + pin.dstNode + " - ins are limited to args")
+				return NewIllegalError("Input pin " + k + "->" + pin.srcPin + " is " + pin.dstNode + " but can only be " + args_container.name + " or " + pipeline_container.name)
 			}
 		}
 	}
@@ -246,10 +247,10 @@ type pincfg struct {
 func readNode(k string, v interface{}) (Node, error) {
 	name, _ := parse.FindTreeString("node", v)
 	if name == "" {
-		return nil, errors.New("Missing node for " + k)
+		return nil, NewMissingError("Node " + k)
 	}
 	if !isLegalNodeName(name) {
-		return nil, errors.New("Illegal node name: " + name)
+		return nil, NewIllegalError("Node " + name)
 	}
 	cfg, _ := parse.FindTreeValue("cfg", v)
 	n, err := reg.instantiate(name, cfg)

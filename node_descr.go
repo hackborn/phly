@@ -2,17 +2,18 @@ package phly
 
 import ()
 
-// --------------------------------
+// ----------------------------------------
 // NODE-DESCR
 
 // NodeDescr describes a node.
 type NodeDescr struct {
-	Id         string
-	Name       string
-	Purpose    string
-	Cfgs       []CfgDescr
-	InputPins  []PinDescr
-	OutputPins []PinDescr
+	Id          string
+	Name        string
+	Purpose     string
+	Cfgs        []CfgDescr
+	StartupPins []PinDescr
+	InputPins   []PinDescr
+	OutputPins  []PinDescr
 }
 
 func (n *NodeDescr) FindInput(name string) *PinDescr {

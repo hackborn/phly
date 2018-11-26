@@ -15,7 +15,8 @@ import (
 // PIPELINE interface
 
 type Pipeline interface {
-	Start(StartArgs) error
+	Run(args StartArgs, input Pins) error
+	Start(args StartArgs, input Pins) error
 	Stop() error
 	Wait() error
 }
@@ -25,7 +26,8 @@ type Pipeline interface {
 
 // StartArgs provides arguments when starting the pipeline.
 type StartArgs struct {
-	Cla map[string]string // Command line arguments
+	Cla    map[string]string // Command line arguments
+	output NodeOutput        // The receiver for any output from this pipeline
 }
 
 // --------------------------------
@@ -40,10 +42,8 @@ type pipeline struct {
 	inputDescr  []pipelinePinDescr    `json:"-"`
 	outputDescr []pipelinePinDescr    `json:"-"`
 	// running
-	stopped lock.AtomicInt32_t `json:"-"` // Store the reason for stopping
-	stop    chan struct{}      `json:"-"`
-	wg      sync.WaitGroup     `json:"-"`
-	run     *runner            `json:"-"`
+	mutex  sync.Mutex       `json:"-"`
+	runner *pipeline_runner `json:"-"`
 }
 
 func (p *pipeline) Describe() NodeDescr {
@@ -71,63 +71,88 @@ func (p *pipeline) Instantiate(args InstantiateArgs, cfg interface{}) (Node, err
 			return nil, err
 		}
 	}
-	ans.stopped.SetTo(emptyStopped)
 	return ans, nil
 }
 
-func (p *pipeline) Run(args RunArgs, input Pins, sender PinSender) (Flow, error) {
-	// Override the run args with my values
-	if args.stop == nil {
-		args.stop = make(chan struct{})
-	}
-	// Clear out any previous run
-	p.stop = args.stop
-	p.Wait()
-
-	args.workingdir = p.workingdir
-
-	inputs, err := p.gatherInputs(args, input)
-	if err != nil {
-		return nil, err
-	}
-	sources, err := p.gatherSources(inputs)
-	if err != nil {
-		return nil, err
-	}
-	r := &runner{}
-	p.stopped.SetTo(running)
-	_, err = r.runAsync(args, p, sources, inputs)
-	if err == nil {
-		p.run = r
-	}
-	return Running, err
-}
-
-func (p *pipeline) Start(sa StartArgs) error {
-	p.Stop()
-	input := &pins{}
-	args := RunArgs{Env: env, cla: sa.Cla, DryRun: dryrun}
-	_, err := p.Run(args, input, nil)
-	return err
-}
-
-func (p *pipeline) Stop() error {
-	p.stopped.TrySetTo(requestedStopped, running)
-	if p.stop != nil {
-		close(p.stop)
-		p.stop = nil
+func (p *pipeline) Process(args ProcessArgs, stage NodeStage, input Pins, output NodeOutput) error {
+	if stage == NodeStarting {
+		p.Stop()
+		// XXX I guess I need to cache the node output or something -- how do I get data out?
+		sargs := StartArgs{Cla: args.cla, output: output}
+		fmt.Println("PROCESS CALLING START")
+		return p.Start(sargs, input)
 	}
 	return nil
 }
 
-func (p *pipeline) Wait() error {
-	p.wg.Wait()
+func (p *pipeline) StopNode(args StoppedArgs) error {
+	return p.Stop()
+}
+
+func (p *pipeline) Run(args StartArgs, input Pins) error {
+	err := p.Start(args, input)
+	if err != nil {
+		return err
+	}
+	return p.Wait()
+}
+
+func (p *pipeline) Start(args StartArgs, input Pins) error {
+	p.Stop()
+	pargs := ProcessArgs{env: env, workingdir: p.workingdir, cla: args.Cla}
+
+	defer lock.Locker(&p.mutex).Unlock()
+	runner, err := startPipelineRunner(p, args, pargs, input)
+	if err != nil {
+		return err
+	}
+	fmt.Println("pipeline started")
+	p.runner = runner
+	return nil
+}
+
+func (p *pipeline) Stop() error {
+	defer lock.Locker(&p.mutex).Unlock()
+
 	var err error
-	if p.run != nil {
-		err = p.run.Error()
-		p.run = nil
+	if p.runner != nil {
+		err = p.runner.close()
+		p.runner = nil
 	}
 	return err
+}
+
+func (p *pipeline) Wait() error {
+	r := p.getRunner()
+	if r == nil {
+		return NewIllegalError("Waiting but nothing started")
+	}
+	fmt.Println("START WAIT")
+	r.wait.Wait()
+	fmt.Println("STOP WAIT err", r.err.Get())
+	return r.err.Get()
+}
+
+// getRunner() answers the current runner, so we don't have
+// to keep a lock during the wait.
+func (p *pipeline) getRunner() *pipeline_runner {
+	defer lock.Locker(&p.mutex).Unlock()
+	return p.runner
+}
+
+// ResolveOutput() takes a source node name and pin and converts it into the
+// destination node name and pin.
+func (p *pipeline) ResolveOutput(srcnode, srcpin string) (string, string, error) {
+	c, ok := p.nodes[srcnode]
+	if c == nil || !ok {
+		return "", "", NewBadRequestError("Node " + srcnode + " does not exist")
+	}
+	for _, conn := range c.outputs {
+		if conn.srcPin == srcpin {
+			return conn.dstNode.name, conn.dstPin, nil
+		}
+	}
+	return "", "", NewBadRequestError("Node " + srcnode + " does not have pin " + srcpin)
 }
 
 func (p *pipeline) add(name string, n Node) error {
@@ -136,15 +161,15 @@ func (p *pipeline) add(name string, n Node) error {
 	}
 	_, ok := p.nodes[name]
 	if ok {
-		return errors.New("Node exists: " + name)
+		return NewIllegalError("Duplicate nodes named " + name)
 	}
 	p.nodes[name] = &container{name: name, node: n}
 	return nil
 }
 
 func (p *pipeline) addInput(srcpin string, dstnode *container, dstpin string) error {
-	if dstnode == nil || dstnode.name != "args" {
-		return unsupportedInputErr
+	if !(dstnode.name == args_container.name || dstnode.name == pipeline_container.name) {
+		return NewIllegalError("Invalid pin " + srcpin + " to " + dstnode.name + "->" + dstpin)
 	}
 	p.ins = append(p.ins, connection{srcpin, dstnode, dstpin})
 	return nil
@@ -159,8 +184,8 @@ func (p *pipeline) validate() error {
 
 	for _, n := range p.nodes {
 		for _, con := range n.inputs {
-			// Input that points to my args list has different rules
-			if con.dstNode != nil && con.dstNode.name == "args" {
+			// Input that points to my hardcoded inputs have different rules
+			if con.dstNode != nil && (con.dstNode.name == args_container.name || con.dstNode.name == pipeline_container.name) {
 				continue
 			}
 
@@ -194,63 +219,6 @@ func (p *pipeline) validate() error {
 		}
 	}
 	return nil
-}
-
-func (p *pipeline) gatherInputs(args RunArgs, src Pins) (runnerInput, error) {
-	ri := runnerInput{}
-
-	if src != nil && src.Count() > 0 {
-		for _, descr := range p.inputDescr {
-			docs := src.Remove(descr.Name)
-			if docs != nil {
-				for _, conn := range descr.connections {
-					ri.add(conn.DstNode, conn.DstPin, docs)
-				}
-			}
-		}
-	}
-	// Apply arguments. We have to find all nodes that have argument inputs.
-	for _, dstn := range p.nodes {
-		for _, conn := range dstn.inputs {
-			if conn.dstNode.name == "args" {
-				doc := p.args.valueDoc(args, conn.dstPin)
-				if doc != nil {
-					docs := []*Doc{doc}
-					ri.add(dstn.name, conn.srcPin, docs)
-				}
-			}
-		}
-	}
-	return ri, nil
-}
-
-// gatherSources() returns all source nodes. A source node is one that either
-// has no input, or has input data for all its inputs.
-func (p *pipeline) gatherSources(input runnerInput) ([]*container, error) {
-	if p.nodes == nil {
-		return nil, missingSourcesErr
-	}
-	var sources []*container
-	for _, c := range p.nodes {
-		if len(c.inputs) < 1 {
-			sources = append(sources, c)
-		} else if len(input.nodeInputs) > 0 {
-			ready := true
-			for _, conn := range c.inputs {
-				if !input.hasPin(c.name, conn.srcPin) {
-					ready = false
-					break
-				}
-			}
-			if ready {
-				sources = append(sources, c)
-			}
-		}
-	}
-	if len(sources) < 1 {
-		return nil, missingSourcesErr
-	}
-	return sources, nil
 }
 
 // --------------------------------
@@ -287,7 +255,7 @@ func (p *pipeline_args) make(frmt arg_format, all map[string]interface{}) error 
 }
 
 // valueDoc() answers a new doc on the given arg, resolving input sources.
-func (p *pipeline_args) valueDoc(args RunArgs, name string) *Doc {
+func (p *pipeline_args) valueDoc(args ProcessArgs, name string) *Doc {
 	a, ok := p.arg(name)
 	if !ok {
 		return nil
@@ -326,7 +294,7 @@ type pipeline_arg struct {
 }
 
 // valueDoc() answers a new doc on the given arg, resolving input sources.
-func (p pipeline_arg) valueDoc(args RunArgs, env_name, cla_name string) *Doc {
+func (p pipeline_arg) valueDoc(args ProcessArgs, env_name, cla_name string) *Doc {
 	// Order of precedence: default value, environment variable, command line arg.
 	value := p.value
 	if env_name != "" {
@@ -341,7 +309,7 @@ func (p pipeline_arg) valueDoc(args RunArgs, env_name, cla_name string) *Doc {
 
 	// Note: Currently ignoring the possibility of other types, since we only have string.
 	doc := &Doc{MimeType: texttype}
-	doc.NewPage("").AddItem(value)
+	doc.AppendItem(value)
 	return doc
 }
 
@@ -357,7 +325,8 @@ type container struct {
 }
 
 var (
-	args_container = &container{name: "args"}
+	args_container     = &container{name: "args"}
+	pipeline_container = &container{name: ".pipeline"}
 )
 
 func (c *container) connect(srcpin string, dstnode *container, dstpin string) error {

@@ -31,12 +31,11 @@ func init() {
 	RegisterVar("rndb", "Random bipolar number (-1 to 1)", rndBipolar)
 
 	// Register factory nodes
-	Register(&batch{})
-	Register(&console{})
-	Register(&files{})
-	Register(&filewatch{})
+	//	Register(&batch{})
+	//	Register(&console{})
+	//	Register(&files{})
+	//	Register(&filewatch{})
 	Register(&pipeline{})
-	Register(&run{})
 }
 
 func factoryPhlibPath() string {

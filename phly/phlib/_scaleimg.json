@@ -8,6 +8,9 @@
 	"nodes": {
 		"load": {
 			"node": "phly/img/load",
+			"ins": {
+				"file": ".pipeline:in"
+			},
 			"outs": {
 				"out": "scale:in"
 			}
@@ -26,7 +29,10 @@
 			"node": "phly/img/save",
 			"cfg": {
 				"file": "${srcdir}-out/${srcbase}${srcext}"
-			}
+			},
+			"__outs": {
+				"out": ".pipeline:out"
+			}		
 		}
 	}
 }

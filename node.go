@@ -1,20 +1,35 @@
 package phly
 
-import (
-	"path/filepath"
+import ()
+
+type NodeStage string
+
+const (
+	NodeStarting NodeStage = "starting"
+	NodeRunning            = "running"
 )
 
-// --------------------------------
+// ----------------------------------------
 // NODE
 
 // Node performs abstract document processing.
-// Nodes that need to perform clean up should implement io.Closer.
 type Node interface {
 	Describe() NodeDescr
-	Run(args RunArgs, input Pins, sender PinSender) (Flow, error)
+
+	// Process processes input, sending any results to output.
+	// stage provides minimal lifecycle information: whether this node is starting or not.
+	// input is the collection of inputs to process.
+	// output is used to send any output to the calling graph. It is also used to
+	// request StopNode() be called if processing should end.
+	// error is used to report any errors; not that it will immediately stop all
+	// graph processing.
+	Process(args ProcessArgs, stage NodeStage, input Pins, output NodeOutput) error
+
+	// Request to stop the node.
+	StopNode(args StoppedArgs) error
 }
 
-// --------------------------------
+// ----------------------------------------
 // NODE-FACTORY
 
 // NodeFactory instantiates a node. All nodes should have their
@@ -24,64 +39,11 @@ type NodeFactory interface {
 	Instantiate(args InstantiateArgs, tree interface{}) (Node, error)
 }
 
-// --------------------------------
-// PIN-SENDER
+// ----------------------------------------
+// NODE-OUTPUT
 
-// PinSender sends pins from a node to a destination.
-type PinSender interface {
-	SendPins(Node, Pins)
-	SendFinished(Node, error)
+// NodeOutput sends data from the node to its parent runner.
+type NodeOutput interface {
+	SendPins(Pins)
+	SendMsg(Msg)
 }
-
-// --------------------------------
-// INSTANTIATE-ARGS
-
-// InstantiateArgs provides information during the instantiation phase.
-type InstantiateArgs struct {
-	Env Environment
-}
-
-// --------------------------------
-// RUN-ARGS
-
-// RunArgs provides arguments to the node during the run.
-type RunArgs struct {
-	Env        Environment
-	Fields     map[string]interface{}
-	DryRun     bool
-	workingdir string            // All relative file paths will use this as the root.
-	cla        map[string]string // Command line arguments
-	stop       chan struct{}
-}
-
-func (r *RunArgs) copy() RunArgs {
-	fields := make(map[string]interface{})
-	return RunArgs{r.Env, fields, r.DryRun, r.workingdir, r.cla, r.stop}
-}
-
-// ClaValue() answers the command line argument value for the given name.
-func (r *RunArgs) ClaValue(name string) string {
-	if name == "" || r.cla == nil {
-		return ""
-	}
-	return r.cla[name]
-}
-
-// Filename() answers an absolute filename for the supplied filename.
-// Absolute filenames are returned as-is. Relative filenames are
-// made relative to the cfg that generated the pipeline.
-func (r *RunArgs) Filename(rel string) string {
-	if filepath.IsAbs(rel) {
-		return rel
-	}
-	abs, err := filepath.Abs(filepath.Join(r.workingdir, rel))
-	if err != nil {
-		return rel
-	}
-	return abs
-}
-
-// Hack in the dry run before I make it real
-var (
-	dryrun = false
-)

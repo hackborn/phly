@@ -1,8 +1,9 @@
-package phly
+package phly_nodes
 
 /*
 import (
 	"fmt"
+	"github.com/hackborn/phly"
 	"github.com/micro-go/parse"
 	"strings"
 	"sync"
@@ -31,7 +32,7 @@ type batch struct {
 	descr NodeDescr       `json:"-"`
 }
 
-func (n *batch) Describe() NodeDescr {
+func (n *batch) Describe() phly.NodeDescr {
 	// When I'm an instantiated node, I create an instance-accurate descr.
 	if n.descr.Name != "" {
 		return n.descr
@@ -40,7 +41,7 @@ func (n *batch) Describe() NodeDescr {
 	return factory_descr
 }
 
-func (n *batch) Instantiate(args InstantiateArgs, cfg interface{}) (Node, error) {
+func (n *batch) Instantiate(args phly.InstantiateArgs, cfg interface{}) (phly.Node, error) {
 	_p := &pipeline{}
 	p, err := _p.Instantiate(args, cfg)
 	if err != nil {

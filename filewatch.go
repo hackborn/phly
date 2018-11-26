@@ -1,5 +1,6 @@
 package phly
 
+/*
 import (
 	"errors"
 	"github.com/fsnotify/fsnotify"
@@ -105,3 +106,4 @@ func filewatchSend(channel, path string, n Node, sender PinSender) {
 	pins.Add(channel, doc)
 	sender.SendPins(n, pins)
 }
+*/

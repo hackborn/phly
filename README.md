@@ -3,6 +3,8 @@ A tool for running pipeline operations.
 
 WARNING: Currently in development, API will change.
 
+DOUBLE WARNING: This is currently being rewritten, is totally torn up, and close to non-functional.
+
 A pipeline processing framework. Phly has two main pieces:
 * The phly framework that manages registering and instantiating nodes, and loading and running pipelines.
 * The phly app, a lightweight application designed to make it easy to compile in additional nodes.

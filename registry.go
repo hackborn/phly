@@ -2,7 +2,6 @@ package phly
 
 import (
 	"encoding/json"
-	"errors"
 )
 
 func Register(fac NodeFactory) error {
@@ -25,7 +24,7 @@ func newRegistry() registry {
 func (r *registry) register(fac NodeFactory) error {
 	id := fac.Describe().Id
 	if id == "" {
-		return BadRequestErr
+		return NewBadRequestError("NodeFactory missing ID")
 	}
 	r.factories[id] = fac
 	return nil
@@ -34,7 +33,7 @@ func (r *registry) register(fac NodeFactory) error {
 func (r *registry) instantiate(name string, cfg interface{}) (Node, error) {
 	fac, ok := r.factories[name]
 	if !ok {
-		return nil, errors.New("Missing node: " + name)
+		return nil, NewMissingError("Node " + name)
 	}
 	args := InstantiateArgs{Env: env}
 	n, err := fac.Instantiate(args, cfg)

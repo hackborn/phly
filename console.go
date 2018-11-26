@@ -1,5 +1,6 @@
 package phly
 
+/*
 import (
 	"fmt"
 )
@@ -47,3 +48,4 @@ func (n *console) Run(args RunArgs, input Pins, sender PinSender) (Flow, error) 
 	sender.SendPins(n, input)
 	return Running, nil
 }
+*/

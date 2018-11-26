@@ -1,30 +1,90 @@
 package phly
 
+// Support functions for testing
+
 import (
-	"testing"
+	"encoding/json"
 )
 
-func RunNodeTest(t *testing.T, n Node, input Pins) (Pins, error) {
-	ts := &TestSender{}
-	env = &environment{}
-	args := RunArgs{Env: env, Fields: make(map[string]interface{}), cla: make(map[string]string), stop: make(chan struct{})}
-	_, err := n.Run(args, input, ts)
-	err = MergeErrors(err, ts.err)
-	return ts.pins, err
+// ----------------------------------------
+// STRING PINS
+
+func StringPinsEqual(a, b Pins) bool {
+	if a == nil && b == nil {
+		return true
+	} else if a != nil && b == nil {
+		return false
+	} else if a == nil && b != nil {
+		return false
+	}
+	equal := true
+	found := make(map[string]struct{})
+	a.WalkPins(func(aname string, adocs Docs) {
+		bdocs := b.GetPin(aname)
+		found[aname] = struct{}{}
+		if len(adocs.Docs) != len(bdocs.Docs) {
+			equal = false
+		} else {
+			for i, ad := range adocs.Docs {
+				if !stringDocsEqual(ad, bdocs.Docs[i]) {
+					equal = false
+				}
+			}
+		}
+	})
+	b.WalkPins(func(bname string, bdocs Docs) {
+		if _, ok := found[bname]; !ok {
+			equal = false
+		}
+	})
+	return equal
 }
 
-// --------------------------------
-// SENDER
-
-type TestSender struct {
-	pins Pins
-	err  error
+func stringDocsEqual(a, b *Doc) bool {
+	if a == nil && b == nil {
+		return true
+	} else if a != nil && b == nil {
+		return false
+	} else if a == nil && b != nil {
+		return false
+	}
+	aitems := a.StringItems()
+	bitems := b.StringItems()
+	if len(aitems) != len(bitems) {
+		return false
+	}
+	for i, av := range aitems {
+		if av != bitems[i] {
+			return false
+		}
+	}
+	return true
 }
 
-func (t *TestSender) SendPins(n Node, p Pins) {
-	t.pins = p
-}
+func StringPinsToJson(pins Pins) string {
+	if pins == nil {
+		return "nil"
+	}
+	type StringDoc struct {
+		Items []string
+	}
 
-func (t *TestSender) SendFinished(n Node, err error) {
-	t.err = err
+	type StringDocs struct {
+		Pins map[string][]*StringDoc
+	}
+
+	sd := &StringDocs{Pins: make(map[string][]*StringDoc)}
+	pins.WalkPins(func(name string, docs Docs) {
+		var t1 []*StringDoc
+		for _, d := range docs.Docs {
+			t2 := &StringDoc{Items: d.StringItems()}
+			t1 = append(t1, t2)
+		}
+		sd.Pins[name] = t1
+	})
+	data, err := json.Marshal(sd)
+	if err != nil {
+		return err.Error()
+	}
+	return string(data)
 }

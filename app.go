@@ -43,15 +43,9 @@ func runPipeline(filename string, clas map[string]string) (Pins, error) {
 
 	// XXX Need to figure out how I get output back from the pin sender.
 	args := StartArgs{Cla: clas}
+	input := &pins{}
 	output := &pins{}
-	err = p.Start(args)
-	if err != nil {
-		return nil, err
-	}
-	err = p.Wait()
-	//	fmt.Println("sleep 1")
-	//	time.Sleep(1000 * time.Millisecond)
-	//	fmt.Println("app run done err", err)
+	err = p.Run(args, input)
 	return output, err
 }
 
@@ -74,7 +68,7 @@ func readCla(args []string) (string, map[string]string, error) {
 			markdownNodes()
 			return "", nil, nil
 		case "-dryrun":
-			dryrun = true
+			//			dryrun = true
 			continue
 		}
 		// First token is the file
@@ -92,7 +86,7 @@ func readCla(args []string) (string, map[string]string, error) {
 	// Default. Primarily for testing. Should probably make this configurable.
 	if filename == "" {
 		filename = `scaleimg.json`
-		filename = `run.json`
+		//		filename = `run.json`
 	}
 	return filename, clas, nil
 }
